@@ -117,8 +117,17 @@ class TTLCache:
 
         attempted_at = time.monotonic()
         with self._condition:
-            self._last_attempt = result
-            self._attempted_at = attempted_at
+            is_not_configured = result.get("error") == "not_configured"
+            if is_not_configured:
+                # Configuration is a local file edit, so do not make users wait
+                # for the provider TTL after adding or removing an API key.
+                self._last_attempt = None
+                self._attempted_at = 0.0
+                self._last_success = None
+                self._success_saved_at = 0.0
+            else:
+                self._last_attempt = result
+                self._attempted_at = attempted_at
 
             is_rate_limited = (
                 result.get("error") == "http_error"
@@ -142,5 +151,5 @@ class TTLCache:
 
             self._fetching = False
             self._condition.notify_all()
-            served = self._last_success or result
+            served = result if is_not_configured else self._last_success or result
             return self._present(served, served is not result)

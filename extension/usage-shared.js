@@ -306,6 +306,7 @@
 
     function renderDeepSeekHtml(deepseek) {
       if (!deepseek) return "";
+      if (deepseek.error === "not_configured") return "";
       if (deepseek.error) {
         return `${providerHeading("deepseek", "DeepSeek")}<div class="error">${escapeHtml(deepseek.message || deepseek.error)}</div>`;
       }
@@ -353,6 +354,7 @@
 
     function renderZaiHtml(zai) {
       if (!zai) return "";
+      if (zai.error === "not_configured") return "";
       if (zai.error) {
         return `${providerHeading("zai", "Z.AI")}<div class="error">${escapeHtml(zai.message || zai.error)}</div>`;
       }

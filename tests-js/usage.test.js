@@ -128,6 +128,17 @@ test("renders DeepSeek balance even when the platform token is missing", () => {
   assert.match(html, /Add token &lt;now&gt;/);
 });
 
+test("hides optional providers that are not configured", () => {
+  const { renderDeepSeekHtml, renderZaiHtml } = usage.createRenderers({
+    providerHeading: (_provider, label) => `<h2>${usage.escapeHtml(label)}</h2>`,
+    cacheNotice: () => "",
+  });
+
+  const notConfigured = { error: "not_configured", message: "Add an API key." };
+  assert.equal(renderDeepSeekHtml(notConfigured), "");
+  assert.equal(renderZaiHtml(notConfigured), "");
+});
+
 test("renders Z.AI usage bundle balance, expiration, and consumed quota", () => {
   const { renderZaiHtml } = usage.createRenderers({
     providerHeading: (_provider, label) => `<h2>${usage.escapeHtml(label)}</h2>`,

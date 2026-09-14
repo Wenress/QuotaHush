@@ -66,6 +66,18 @@ class TTLCacheTests(unittest.TestCase):
         self.assertEqual(cooldown["error"], "rate_limited")
         self.assertIn("880s", cooldown["message"])
 
+    def test_does_not_cache_not_configured(self):
+        cache = TTLCache(ttl_seconds=300)
+        responses = iter(
+            [
+                {"error": "not_configured", "message": "Add an API key."},
+                {"value": 42},
+            ]
+        )
+
+        self.assertEqual(cache.get(lambda: next(responses))["error"], "not_configured")
+        self.assertEqual(cache.get(lambda: next(responses)), {"value": 42})
+
     def test_persists_last_success_and_marks_stale_fallback(self):
         with TemporaryDirectory() as temporary_directory:
             storage_path = Path(temporary_directory) / "claude_usage.json"

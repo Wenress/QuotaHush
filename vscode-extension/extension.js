@@ -35,6 +35,8 @@ let zaiItem;
 let timer;
 let refreshPromise;
 let viewProvider;
+let deepseekConfigured = false;
+let zaiConfigured = false;
 
 function colorForPercent(percent) {
   if (percent == null || Number.isNaN(percent)) return undefined;
@@ -172,8 +174,9 @@ function buildZaiTooltip(zai, fetchedAt) {
 }
 
 function updateStatusItems(data) {
-  for (const item of [claudeItem, codexItem, deepseekItem, zaiItem]) {
+  for (const item of [claudeItem, codexItem]) {
     item.command = "quotahush.refresh";
+    item.show();
   }
   const claudeError = data.claude?.error;
   const claudePercent = data.claude && !claudeError
@@ -201,28 +204,42 @@ function updateStatusItems(data) {
     ? new vscode.ThemeColor("statusBarItem.errorBackground")
     : undefined;
 
-  const deepseekError = data.deepseek?.error || data.deepseek?.balance?.error;
-  const deepseekBalance = !deepseekError ? deepseekBalanceLine(data.deepseek) : "";
-  deepseekItem.text = deepseekError
-    ? "$(warning) DeepSeek"
-    : `$(pulse) DeepSeek ${deepseekBalance || "—"}`;
-  deepseekItem.color = undefined;
-  deepseekItem.tooltip = buildDeepSeekTooltip(data.deepseek, data.fetched_at);
-  deepseekItem.backgroundColor = deepseekError
-    ? new vscode.ThemeColor("statusBarItem.errorBackground")
-    : undefined;
+  deepseekConfigured = Boolean(data.deepseek) && data.deepseek.error !== "not_configured";
+  if (!deepseekConfigured) {
+    deepseekItem.hide();
+  } else {
+    const deepseekError = data.deepseek?.error || data.deepseek?.balance?.error;
+    const deepseekBalance = !deepseekError ? deepseekBalanceLine(data.deepseek) : "";
+    deepseekItem.command = "quotahush.refresh";
+    deepseekItem.text = deepseekError
+      ? "$(warning) DeepSeek"
+      : `$(pulse) DeepSeek ${deepseekBalance || "—"}`;
+    deepseekItem.color = undefined;
+    deepseekItem.tooltip = buildDeepSeekTooltip(data.deepseek, data.fetched_at);
+    deepseekItem.backgroundColor = deepseekError
+      ? new vscode.ThemeColor("statusBarItem.errorBackground")
+      : undefined;
+    deepseekItem.show();
+  }
 
-  const zaiError = data.zai?.error;
-  const zaiBalance = !zaiError ? zaiCurrentBalance(data.zai) : null;
-  const zaiPercent = !zaiError ? zaiUsedPercent(data.zai) : null;
-  zaiItem.text = zaiError
-    ? "$(warning) Z.AI"
-    : `$(pulse) Z.AI ${zaiBalance == null ? "—" : fmtCompactCount(zaiBalance)}`;
-  zaiItem.color = colorForPercent(zaiPercent);
-  zaiItem.tooltip = buildZaiTooltip(data.zai, data.fetched_at);
-  zaiItem.backgroundColor = zaiError
-    ? new vscode.ThemeColor("statusBarItem.errorBackground")
-    : undefined;
+  zaiConfigured = Boolean(data.zai) && data.zai.error !== "not_configured";
+  if (!zaiConfigured) {
+    zaiItem.hide();
+  } else {
+    const zaiError = data.zai?.error;
+    const zaiBalance = !zaiError ? zaiCurrentBalance(data.zai) : null;
+    const zaiPercent = !zaiError ? zaiUsedPercent(data.zai) : null;
+    zaiItem.command = "quotahush.refresh";
+    zaiItem.text = zaiError
+      ? "$(warning) Z.AI"
+      : `$(pulse) Z.AI ${zaiBalance == null ? "—" : fmtCompactCount(zaiBalance)}`;
+    zaiItem.color = colorForPercent(zaiPercent);
+    zaiItem.tooltip = buildZaiTooltip(data.zai, data.fetched_at);
+    zaiItem.backgroundColor = zaiError
+      ? new vscode.ThemeColor("statusBarItem.errorBackground")
+      : undefined;
+    zaiItem.show();
+  }
 }
 
 function markOffline(error) {
@@ -230,12 +247,28 @@ function markOffline(error) {
     `Can't reach QuotaHush Companion on 127.0.0.1:8765.\n\n` +
     `[Install or update QuotaHush Companion](${COMPANION_URL})\n\n${escapeMarkdown(error.message)}`,
   );
-  for (const [item, label] of [[claudeItem, "Claude"], [codexItem, "Codex"], [deepseekItem, "DeepSeek"], [zaiItem, "Z.AI"]]) {
+  for (const [item, label] of [[claudeItem, "Claude"], [codexItem, "Codex"]]) {
     item.text = `$(warning) ${label} offline`;
     item.color = undefined;
     item.tooltip = message;
     item.command = "quotahush.installCompanion";
     item.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+    item.show();
+  }
+  for (const [item, label, configured] of [
+    [deepseekItem, "DeepSeek", deepseekConfigured],
+    [zaiItem, "Z.AI", zaiConfigured],
+  ]) {
+    if (!configured) {
+      item.hide();
+      continue;
+    }
+    item.text = `$(warning) ${label} offline`;
+    item.color = undefined;
+    item.tooltip = message;
+    item.command = "quotahush.installCompanion";
+    item.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+    item.show();
   }
 }
 
@@ -338,12 +371,10 @@ function activate(context) {
   deepseekItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 999998);
   deepseekItem.command = "quotahush.refresh";
   deepseekItem.text = "$(pulse) DeepSeek";
-  deepseekItem.show();
 
   zaiItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 999997);
   zaiItem.command = "quotahush.refresh";
   zaiItem.text = "$(pulse) Z.AI";
-  zaiItem.show();
 
   viewProvider = new UsageViewProvider();
   context.subscriptions.push(
