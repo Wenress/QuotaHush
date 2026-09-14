@@ -8,7 +8,7 @@ A lightweight, local usage monitor for **Claude Code**, **OpenAI Codex**, **Deep
 > [!IMPORTANT]
 > QuotaHush is an independent, unofficial project. It is not affiliated with or endorsed by Anthropic, OpenAI, Z.AI, or the project acknowledged above.
 
-[Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [License](LICENSE)
+[Website](https://wenress.github.io/QuotaHush/) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [License](LICENSE)
 
 ## Quick start
 

@@ -8,6 +8,6 @@ The extension is a lightweight local client. Install
 same computer before using it. The extension contacts only
 `http://127.0.0.1:8765` and contains no telemetry.
 
-See the [full documentation](https://github.com/Wenress/QuotaHush#readme),
-[privacy policy](https://github.com/Wenress/QuotaHush/blob/main/PRIVACY.md), and
+See the [installation guide](https://wenress.github.io/QuotaHush/#install),
+[privacy policy](https://wenress.github.io/QuotaHush/privacy.html), and
 [support guide](https://github.com/Wenress/QuotaHush/blob/main/SUPPORT.md).

@@ -3,7 +3,7 @@
   "name": "QuotaHush",
   "version": "0.1.0",
   "description": "Shows Claude Code, Codex, DeepSeek, and Z.AI usage through the QuotaHush local server.",
-  "homepage_url": "https://github.com/Wenress/QuotaHush",
+  "homepage_url": "https://wenress.github.io/QuotaHush/",
   "action": {
     "default_popup": "popup.html",
     "default_title": "QuotaHush"
