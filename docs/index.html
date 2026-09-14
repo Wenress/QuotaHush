@@ -103,12 +103,12 @@
         <article class="install-card featured">
           <div class="card-title"><span>Windows</span><small>Recommended</small></div>
           <ol>
-            <li>Download <code>QuotaHush-Windows-x64-&lt;version&gt;.zip</code> from the latest release.</li>
-            <li>Extract the archive and open PowerShell in that folder.</li>
-            <li>Run:</li>
+            <li>Download <code>QuotaHush-Setup-x64-&lt;version&gt;.exe</code> from the latest release.</li>
+            <li>Run the setup. It installs for your account without administrator privileges.</li>
+            <li>Open the browser or VS Code extension.</li>
           </ol>
-          <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
-          <p class="note">Python is not required. QuotaHush starts automatically when you sign in.</p>
+          <p class="note">Python is not required. Setup downloads no additional code and QuotaHush starts automatically when you sign in.</p>
+          <p class="note warning"><strong>Unsigned preview:</strong> Windows may show “Unknown publisher”. <a href="https://github.com/Wenress/QuotaHush/blob/main/VERIFYING_RELEASES.md">Verify the release checksum or GitHub provenance</a> before running it.</p>
         </article>
 
         <article class="install-card">
@@ -174,6 +174,10 @@ https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash</code
         <details>
           <summary>Can another device reach the Companion?</summary>
           <p>No. It listens only on <code>127.0.0.1</code>, the loopback address of your computer.</p>
+        </details>
+        <details>
+          <summary>Why does Windows show “Unknown publisher”?</summary>
+          <p>QuotaHush does not currently use a paid Authenticode certificate. Download only from the official GitHub Releases page and verify the published SHA-256 checksum or GitHub artifact attestation.</p>
         </details>
       </div>
     </section>

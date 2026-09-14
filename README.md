@@ -8,7 +8,7 @@ A lightweight, local usage monitor for **Claude Code**, **OpenAI Codex**, **Deep
 > [!IMPORTANT]
 > QuotaHush is an independent, unofficial project. It is not affiliated with or endorsed by Anthropic, OpenAI, Z.AI, or the project acknowledged above.
 
-[Website](https://wenress.github.io/QuotaHush/) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [License](LICENSE)
+[Website](https://wenress.github.io/QuotaHush/) · [Verify downloads](VERIFYING_RELEASES.md) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [License](LICENSE)
 
 ## Quick start
 
@@ -26,10 +26,9 @@ usage data, and one or both client extensions, which display it.
 
 2. Install QuotaHush Companion:
 
-   - **Windows:** download `QuotaHush-Windows-x64-<version>.zip` from the
+   - **Windows:** download `QuotaHush-Setup-x64-<version>.exe` from the
      [latest release](https://github.com/Wenress/QuotaHush/releases/latest),
-     extract it, then follow the
-     [Windows installation steps](#windows--recommended);
+     then run the installer;
    - **Linux:** run the one-line installer shown in
      [Install the Companion](#install-the-companion).
 
@@ -170,18 +169,25 @@ Install and start QuotaHush Companion before adding either client.
 
 ### Windows — recommended
 
-Download `QuotaHush-Windows-x64-<version>.zip` from the
-[latest release](https://github.com/Wenress/QuotaHush/releases/latest), extract
-it, and run:
+Download `QuotaHush-Setup-x64-<version>.exe` from the
+[latest release](https://github.com/Wenress/QuotaHush/releases/latest) and run
+it. The setup installs only for the current user and does not request
+administrator privileges or download additional code. It creates the
+configuration file, registers the `QuotaHushServer` scheduled task, starts the
+Companion, and verifies its local health endpoint. Python is not required.
+
+QuotaHush's Windows binaries are currently unsigned, so Windows may identify
+the publisher as unknown. Download them only from the official Releases page
+and follow [Verifying releases](VERIFYING_RELEASES.md) to compare the SHA-256
+checksum or GitHub build provenance.
+
+The `QuotaHush-Windows-x64-<version>.zip` archive remains available as a
+portable and diagnostic option. Extract it to a permanent directory and either
+run `quotahush-server.exe` directly or install automatic startup with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
-
-The installer copies the standalone companion under the current user's local
-application directory, creates the configuration file, registers the
-`QuotaHushServer` scheduled task, and starts it immediately. Python is not
-required.
 
 For development directly from a source checkout, the legacy source installer
 remains available:
@@ -316,17 +322,22 @@ After VS Code reloads, the status bar shows separate Claude, Codex, DeepSeek, an
 
 ## Update
 
-1. stop any manually started server process;
-2. replace the files with the new version, or run `git pull`;
-3. run the server installation script for your operating system again;
-4. select **Reload** for QuotaHush on the browser extensions page;
-5. reinstall the new VSIX if you use the VS Code integration.
+1. on Windows, run the latest setup again; on Linux, rerun the one-line
+   installer; for a source checkout, pull the latest changes and rerun its
+   installation script;
+2. select **Reload** for QuotaHush on the browser extensions page;
+3. reinstall the new VSIX if you use the VS Code integration.
 
 The installers can be run again safely when upgrading QuotaHush.
 
 ## Uninstall
 
-### Windows — standalone companion
+### Windows — setup installer
+
+Open **Settings → Apps → Installed apps**, find **QuotaHush Companion**, and
+select **Uninstall**. The configuration file is preserved for future upgrades.
+
+For the ZIP-based installation, run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\Programs\QuotaHush\uninstall.ps1"

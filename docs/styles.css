@@ -108,6 +108,8 @@ h3 { margin: 1rem 0 .5rem; font-size: 1.35rem; letter-spacing: -.02em; }
 .install-card ol { margin: 0 0 1rem; padding-left: 1.35rem; color: #c4d0d6; }
 pre { margin: 1rem 0; padding: 1rem; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #050b11; border: 1px solid #1c2d3a; border-radius: .55rem; color: #c8fff7; font-size: .82rem; line-height: 1.55; }
 .note { margin-bottom: 0; font-size: .84rem; }
+.note.warning { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); color: #bfcbd1; }
+.note.warning strong { color: var(--amber); }
 .verify-callout { margin: 1rem 0 3.5rem; padding: 1.25rem 1.4rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; border: 1px solid var(--line); border-radius: .75rem; }
 .verify-callout p { margin: .2rem 0 0; color: var(--muted); }
 .verify-callout a { flex: none; color: var(--cyan); text-decoration: none; }
