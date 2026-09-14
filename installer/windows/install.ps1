@@ -6,13 +6,13 @@ if (-not (Test-Path -LiteralPath $SourceExecutable)) {
     throw "quotahush-server.exe was not found next to this installer."
 }
 
-$TaskName = "QuotaHushServer"
 $InstallDirectory = Join-Path $env:LOCALAPPDATA "Programs\QuotaHush"
 $InstallExecutable = Join-Path $InstallDirectory "quotahush-server.exe"
 $ConfigDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
 $ConfigFile = Join-Path $ConfigDirectory ".var.env"
+$RunKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunValue = "QuotaHush Companion"
 
-Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 Get-Process -Name "quotahush-server" -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -and [IO.Path]::GetFullPath($_.Path) -eq [IO.Path]::GetFullPath($InstallExecutable) } |
     Stop-Process -Force
@@ -26,14 +26,10 @@ if (-not (Test-Path -LiteralPath $ConfigFile)) {
     Copy-Item -LiteralPath (Join-Path $SourceDirectory ".var.env.example") -Destination $ConfigFile
 }
 
-$Action = New-ScheduledTaskAction -Execute $InstallExecutable -WorkingDirectory $InstallDirectory
-$Trigger = New-ScheduledTaskTrigger -AtLogOn
-$Settings = New-ScheduledTaskSettingsSet `
-    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
-Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger `
-    -Settings $Settings -Description "QuotaHush local companion" -Force | Out-Null
-Start-ScheduledTask -TaskName $TaskName
+New-Item -Path $RunKey -Force | Out-Null
+New-ItemProperty -Path $RunKey -Name $RunValue -PropertyType String `
+    -Value ('"' + $InstallExecutable + '"') -Force | Out-Null
+Start-Process -FilePath $InstallExecutable -WorkingDirectory $InstallDirectory
 
 $Healthy = $false
 for ($Attempt = 0; $Attempt -lt 20; $Attempt++) {

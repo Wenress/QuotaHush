@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 
-$TaskName = "QuotaHushServer"
 $InstallDirectory = Join-Path $env:LOCALAPPDATA "Programs\QuotaHush"
 $InstallExecutable = Join-Path $InstallDirectory "quotahush-server.exe"
+$RunKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunValue = "QuotaHush Companion"
 
-Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path $RunKey -Name $RunValue -ErrorAction SilentlyContinue
 Get-Process -Name "quotahush-server" -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -and [IO.Path]::GetFullPath($_.Path) -eq [IO.Path]::GetFullPath($InstallExecutable) } |
     Stop-Process -Force

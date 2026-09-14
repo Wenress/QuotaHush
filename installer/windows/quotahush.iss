@@ -48,22 +48,24 @@ Source: "{#CompanionExe}"; DestDir: "{app}"; DestName: "quotahush-server.exe"; F
 Source: "{#RepositoryRoot}\.var.env.example"; DestDir: "{localappdata}\QuotaHush"; DestName: ".var.env"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#RepositoryRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RepositoryRoot}\PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "manage-process.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "verify-health.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "QuotaHush Companion"; ValueData: """{app}\quotahush-server.exe"""; Flags: uninsdeletevalue
+
 [Run]
-Filename: "{sys}\schtasks.exe"; Parameters: "/Create /TN ""QuotaHushServer"" /TR ""{app}\quotahush-server.exe"" /SC ONLOGON /F"; Flags: runhidden waituntilterminated
-Filename: "{sys}\schtasks.exe"; Parameters: "/Run /TN ""QuotaHushServer"""; Flags: runhidden waituntilterminated; AfterInstall: VerifyCompanion
+Filename: "{app}\quotahush-server.exe"; WorkingDir: "{app}"; Flags: runhidden nowait; AfterInstall: VerifyCompanion
 
 [UninstallRun]
-Filename: "{sys}\schtasks.exe"; Parameters: "/End /TN ""QuotaHushServer"""; Flags: runhidden waituntilterminated; RunOnceId: "StopQuotaHush"
-Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""QuotaHushServer"" /F"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveQuotaHushTask"
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-process.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"""; Flags: runhidden waituntilterminated; RunOnceId: "StopQuotaHush"
 
 [Code]
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
-  Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN "QuotaHushServer"', '', SW_HIDE,
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM "quotahush-server.exe"', '', SW_HIDE,
     ewWaitUntilTerminated, ResultCode);
   Result := '';
 end;

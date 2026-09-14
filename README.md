@@ -173,7 +173,7 @@ Download `QuotaHush-Setup-x64-<version>.exe` from the
 [latest release](https://github.com/Wenress/QuotaHush/releases/latest) and run
 it. The setup installs only for the current user and does not request
 administrator privileges or download additional code. It creates the
-configuration file, registers the `QuotaHushServer` scheduled task, starts the
+configuration file, registers a per-user startup entry, starts the
 Companion, and verifies its local health endpoint. Python is not required.
 
 QuotaHush's Windows binaries are currently unsigned, so Windows may identify
@@ -372,7 +372,8 @@ Then remove QuotaHush from the browser extensions page and the VS Code Extension
 ### A client reports that the server is offline
 
 - check `http://127.0.0.1:8765/health`;
-- on Windows, inspect the `QuotaHushServer` task in Task Scheduler;
+- on Windows, inspect the `QuotaHush Companion` value under
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`;
 - on Linux, run `systemctl --user status quotahush-server`;
 - make sure another application is not already using port `8765`.
 

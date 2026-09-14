@@ -29,7 +29,7 @@ signed GitHub artifact attestation. With the GitHub CLI installed, verify an
 artifact with:
 
 ```powershell
-gh attestation verify .\QuotaHush-Setup-x64-0.1.1.exe --repo Wenress/QuotaHush
+gh attestation verify .\QuotaHush-Setup-x64-<version>.exe --repo Wenress/QuotaHush
 ```
 
 Successful verification connects the artifact's digest to QuotaHush's public
