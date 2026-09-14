@@ -2,7 +2,7 @@
   "name": "quotahush-local",
   "displayName": "QuotaHush",
   "description": "Shows Claude Code, Codex, DeepSeek, and Z.AI usage in the status bar through the QuotaHush local server.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "wenress",
   "license": "MIT",
   "icon": "media/icon.png",
