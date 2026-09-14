@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# JavaScript and extension packages
+node_modules/
+*.vsix
+*.crx
+web-ext-artifacts/
+
+# Local runtime files
+.quotahush-task-heartbeat
+*.log
+.var.env
+history-before-quotahush.bundle
+history-before-icon-cleanup.bundle
+
+# Editors
+.vscode/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="QuotaHush keeps Claude Code, Codex, DeepSeek, and Z.AI usage visible from your browser or VS Code.">
+  <meta name="theme-color" content="#081019">
+  <title>QuotaHush — Local AI usage monitor</title>
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="QuotaHush home">
+      <img src="assets/icon.png" width="34" height="34" alt="">
+      <span>QuotaHush</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#install">Install</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/Wenress/QuotaHush">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Local companion · Windows &amp; Linux</p>
+        <h1>Your AI usage.<br><em>Quietly local.</em></h1>
+        <p class="lede">Keep Claude Code, Codex, DeepSeek, and Z.AI limits in sight from Chromium or VS Code—without sending your credentials or usage to another service.</p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/Wenress/QuotaHush/releases/latest">Download latest release <span aria-hidden="true">↓</span></a>
+          <a class="button secondary" href="#install">Installation guide</a>
+        </div>
+        <p class="microcopy">Free and open source · MIT licensed · No telemetry</p>
+      </div>
+
+      <div class="usage-panel" aria-label="Example QuotaHush usage panel">
+        <div class="panel-head">
+          <div><span class="live-dot"></span> QuotaHush</div>
+          <span>Updated now</span>
+        </div>
+        <div class="provider-card">
+          <div class="provider-row"><strong>Claude</strong><span>42%</span></div>
+          <div class="meter"><span style="width:42%"></span></div>
+          <p>Session · resets in 2h 18m</p>
+        </div>
+        <div class="provider-card">
+          <div class="provider-row"><strong>Codex</strong><span>68%</span></div>
+          <div class="meter amber"><span style="width:68%"></span></div>
+          <p>Weekly · resets Monday</p>
+        </div>
+        <div class="provider-card compact">
+          <div><strong>DeepSeek</strong><span>$8.74 balance</span></div>
+          <div><strong>Z.AI</strong><span>86% available</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="provider-strip" aria-label="Supported providers">
+      <span>Works with</span>
+      <strong>Claude Code</strong>
+      <strong>OpenAI Codex</strong>
+      <strong>DeepSeek</strong>
+      <strong>Z.AI</strong>
+    </section>
+
+    <section class="section" id="how-it-works">
+      <div class="section-heading">
+        <p class="kicker">One local connection</p>
+        <h2>Nothing new between you and your providers.</h2>
+        <p>QuotaHush reads credentials already stored by your CLI tools or keys you add locally. Clients receive normalized usage data—not your tokens.</p>
+      </div>
+      <div class="steps">
+        <article>
+          <span class="step-number">01</span>
+          <h3>Sign in</h3>
+          <p>Authenticate Claude Code or Codex normally. Add DeepSeek and Z.AI only if you use them.</p>
+        </article>
+        <article>
+          <span class="step-number">02</span>
+          <h3>Run Companion</h3>
+          <p>A small local service queries enabled providers and binds exclusively to <code>127.0.0.1</code>.</p>
+        </article>
+        <article>
+          <span class="step-number">03</span>
+          <h3>Choose a view</h3>
+          <p>Use the Chromium popup, the VS Code status bar, or both. Each refreshes automatically.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section install-section" id="install">
+      <div class="section-heading">
+        <p class="kicker">Get started</p>
+        <h2>Install the Companion first.</h2>
+        <p>Then add whichever client fits your workflow. You only need one Companion per computer.</p>
+      </div>
+
+      <div class="install-grid">
+        <article class="install-card featured">
+          <div class="card-title"><span>Windows</span><small>Recommended</small></div>
+          <ol>
+            <li>Download <code>QuotaHush-Windows-x64-&lt;version&gt;.zip</code> from the latest release.</li>
+            <li>Extract the archive and open PowerShell in that folder.</li>
+            <li>Run:</li>
+          </ol>
+          <pre><code>powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
+          <p class="note">Python is not required. QuotaHush starts automatically when you sign in.</p>
+        </article>
+
+        <article class="install-card">
+          <div class="card-title"><span>Linux</span><small>Python 3.11+</small></div>
+          <p>Install for your user account with one command:</p>
+          <pre><code>curl --proto '=https' --tlsv1.2 -fsSL \
+https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash</code></pre>
+          <p class="note">Uses a <code>systemd --user</code> service and does not require root access.</p>
+        </article>
+      </div>
+
+      <div class="verify-callout">
+        <div>
+          <strong>Check the connection</strong>
+          <p>Open the health endpoint after installation. A healthy Companion identifies itself as QuotaHush.</p>
+        </div>
+        <a href="http://127.0.0.1:8765/health"><code>127.0.0.1:8765/health</code> <span aria-hidden="true">↗</span></a>
+      </div>
+
+      <div class="client-grid">
+        <article>
+          <p class="client-label">Chromium</p>
+          <h3>A popup in your toolbar</h3>
+          <p>Download the Chromium ZIP, extract it, then use <strong>Load unpacked</strong> from Chrome, Edge, or Brave's extension page.</p>
+          <a href="https://github.com/Wenress/QuotaHush/releases/latest">Get the Chromium extension →</a>
+        </article>
+        <article>
+          <p class="client-label">Visual Studio Code</p>
+          <h3>Limits beside your code</h3>
+          <p>Download the VSIX and choose <strong>Install from VSIX…</strong> in the Extensions view.</p>
+          <a href="https://github.com/Wenress/QuotaHush/releases/latest">Get the VS Code extension →</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section privacy-section">
+      <div>
+        <p class="kicker">Private by design</p>
+        <h2>Your credentials stay on your computer.</h2>
+      </div>
+      <div class="privacy-points">
+        <p><strong>No QuotaHush cloud.</strong> Provider requests go directly from your computer to the corresponding provider.</p>
+        <p><strong>No prompt access.</strong> QuotaHush processes usage limits, balances, and reset times—not conversations.</p>
+        <p><strong>No tracking.</strong> There is no project-operated analytics, advertising, telemetry, or crash reporting.</p>
+        <a href="privacy.html">Read the privacy policy →</a>
+      </div>
+    </section>
+
+    <section class="section faq-section">
+      <div class="section-heading">
+        <p class="kicker">Good to know</p>
+        <h2>Common questions</h2>
+      </div>
+      <div class="faq-list">
+        <details>
+          <summary>Do I need every provider?</summary>
+          <p>No. Configure any one provider. Missing providers do not prevent the others from working.</p>
+        </details>
+        <details>
+          <summary>Does QuotaHush need Python?</summary>
+          <p>Not on Windows when you use the standalone Companion. Linux and source installations require Python 3.11 or newer.</p>
+        </details>
+        <details>
+          <summary>Can another device reach the Companion?</summary>
+          <p>No. It listens only on <code>127.0.0.1</code>, the loopback address of your computer.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="brand footer-brand"><img src="assets/icon.png" width="30" height="30" alt=""><span>QuotaHush</span></div>
+    <p>Inspired by <a href="https://github.com/robinebers/openusage">Robin Ebers' OpenUsage</a>. Independent and unofficial.</p>
+    <div><a href="privacy.html">Privacy</a><a href="https://github.com/Wenress/QuotaHush/issues">Support</a><a href="https://github.com/Wenress/QuotaHush/blob/main/LICENSE">MIT License</a></div>
+  </footer>
+</body>
+</html>

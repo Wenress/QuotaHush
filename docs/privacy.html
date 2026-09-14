@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="QuotaHush privacy policy.">
+  <meta name="theme-color" content="#081019">
+  <title>Privacy — QuotaHush</title>
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="QuotaHush home"><img src="assets/icon.png" width="34" height="34" alt=""><span>QuotaHush</span></a>
+    <nav aria-label="Primary navigation"><a href="./">Home</a><a href="https://github.com/Wenress/QuotaHush">GitHub</a></nav>
+  </header>
+  <main id="main" class="policy-page">
+    <p class="kicker">Last updated September 14, 2026</p>
+    <h1>Privacy policy</h1>
+    <p class="policy-lede">QuotaHush is a local companion service with browser and Visual Studio Code clients. It has no project-operated backend, advertising, analytics, telemetry, or crash-reporting service.</p>
+
+    <section>
+      <h2>Data processed locally</h2>
+      <p>QuotaHush may read credentials already stored for Claude Code and Codex CLI. It may also read DeepSeek and Z.AI credentials that you place in the QuotaHush configuration file. Credentials are used only to make requests to the corresponding provider and are never returned by the local API or displayed by the clients.</p>
+      <p>The clients receive normalized usage information such as plan names, quota percentages, reset times, credit balances, spend, token counts, and request counts. QuotaHush does not read prompts or conversation contents.</p>
+    </section>
+
+    <section>
+      <h2>Network communication</h2>
+      <p>QuotaHush Companion contacts only the provider endpoints needed for the features you enable. The browser and Visual Studio Code extensions contact the Companion through <code>http://127.0.0.1:8765</code> on the same computer. QuotaHush does not transmit credentials or usage information to the project authors.</p>
+    </section>
+
+    <section>
+      <h2>Local storage</h2>
+      <p>Provider responses may be cached locally to reduce upstream requests and show the latest valid result during temporary failures. Diagnostic logs are stored locally and redact authentication tokens. Claude Code and Codex CLI credentials remain in their original files; refreshed CLI credentials may be written back using conservative atomic updates.</p>
+      <ul>
+        <li>Windows configuration and logs: <code>%LOCALAPPDATA%\QuotaHush</code></li>
+        <li>Linux configuration: <code>${XDG_CONFIG_HOME:-~/.config}/quotahush</code></li>
+        <li>Linux cache and state: <code>~/.cache/quotahush</code> and <code>~/.local/state/quotahush</code></li>
+      </ul>
+      <p>Uninstalling the Companion does not delete provider credentials. You may remove the QuotaHush directories above to delete its configuration, cache, and logs.</p>
+    </section>
+
+    <section>
+      <h2>Browser permission</h2>
+      <p>The Chromium extension requests access only to <code>http://127.0.0.1:8765/*</code>. This permission is used exclusively to retrieve usage information from QuotaHush Companion on the same computer.</p>
+    </section>
+
+    <section>
+      <h2>Third-party services</h2>
+      <p>Requests made to Claude, OpenAI, DeepSeek, and Z.AI are governed by those providers' own terms and privacy policies. QuotaHush is independent and is not affiliated with or endorsed by those providers.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>Privacy questions and reports can be submitted through the <a href="https://github.com/Wenress/QuotaHush/issues">QuotaHush issue tracker</a>.</p>
+    </section>
+  </main>
+  <footer><div class="brand footer-brand"><img src="assets/icon.png" width="30" height="30" alt=""><span>QuotaHush</span></div><p>Local by design.</p><div><a href="./">Home</a><a href="https://github.com/Wenress/QuotaHush">GitHub</a></div></footer>
+</body>
+</html>

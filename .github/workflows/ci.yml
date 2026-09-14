@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test server
+        env:
+          PYTHONPATH: server/src
+        run: |
+          python -m unittest discover -s server/tests -v
+          python -m compileall -q server/src server/tests server/run_server.pyw server/frozen_entry.py
+      - name: Test clients and generated files
+        run: |
+          npm run check:generated
+          npm run check:version
+          npm test
+          node --check shared/usage.js
+          node --check extension/popup.js
+          node --check vscode-extension/extension.js
+          node --check vscode-extension/provider-icons.js
+      - name: Check shell scripts
+        run: |
+          bash -n install.sh
+          bash -n server/install_linux.sh
+          bash -n server/uninstall_linux.sh
+      - name: Check PowerShell scripts
+        shell: pwsh
+        run: |
+          $Failed = $false
+          Get-ChildItem server, installer -Filter *.ps1 -Recurse | ForEach-Object {
+            $Tokens = $null
+            $Errors = $null
+            [Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$Tokens, [ref]$Errors) | Out-Null
+            if ($Errors.Count) {
+              $Errors | ForEach-Object { Write-Error "$($_.Extent.File):$($_.Extent.StartLineNumber) $($_.Message)" }
+              $Failed = $true
+            }
+          }
+          if ($Failed) { exit 1 }

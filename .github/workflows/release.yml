@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-companion:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build standalone companion
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pyinstaller
+          pyinstaller server/quotahush-server.spec --distpath build/windows --workpath build/pyinstaller
+      - name: Assemble installer archive
+        shell: pwsh
+        run: |
+          $Version = (Get-Content VERSION -Raw).Trim()
+          $Stage = "build/QuotaHush-Windows-x64"
+          New-Item -ItemType Directory -Path $Stage | Out-Null
+          Copy-Item build/windows/quotahush-server.exe $Stage/
+          Copy-Item installer/windows/install.ps1 $Stage/
+          Copy-Item installer/windows/uninstall.ps1 $Stage/
+          Copy-Item .var.env.example $Stage/
+          Copy-Item LICENSE $Stage/
+          Copy-Item PRIVACY.md $Stage/
+          Compress-Archive -Path "$Stage/*" -DestinationPath "build/QuotaHush-Windows-x64-$Version.zip"
+      - name: Package client extensions
+        shell: pwsh
+        run: |
+          $Version = (Get-Content VERSION -Raw).Trim()
+          npm run build
+          Push-Location vscode-extension
+          npx --yes @vscode/vsce package --out "../build/quotahush-vscode-$Version.vsix"
+          Pop-Location
+          Compress-Archive -Path "extension/*" -DestinationPath "build/quotahush-chromium-$Version.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuotaHush-release-assets
+          path: |
+            build/QuotaHush-Windows-x64-*.zip
+            build/quotahush-vscode-*.vsix
+            build/quotahush-chromium-*.zip
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $Assets = Get-ChildItem build -File |
+            Where-Object { $_.Name -match '^(QuotaHush-Windows-x64-.+\.zip|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip)$' } |
+            Select-Object -ExpandProperty FullName
+          gh release create $env:GITHUB_REF_NAME $Assets --generate-notes

@@ -1,0 +1,58 @@
+{
+  "name": "quotahush-local",
+  "displayName": "QuotaHush",
+  "description": "Shows Claude Code, Codex, DeepSeek, and Z.AI usage in the status bar through the QuotaHush local server.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/Wenress/QuotaHush#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wenress/QuotaHush.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Wenress/QuotaHush/issues"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "extensionKind": ["ui"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": true },
+    "virtualWorkspaces": { "supported": true }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "quotahush.refresh",
+        "title": "QuotaHush: Refresh Usage"
+      },
+      {
+        "command": "quotahush.installCompanion",
+        "title": "QuotaHush: Install Companion"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "quotahush",
+          "title": "QuotaHush",
+          "icon": "media/activitybar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "quotahush": [
+        {
+          "id": "quotahush.view",
+          "name": "Usage",
+          "type": "webview"
+        }
+      ]
+    }
+  }
+}
