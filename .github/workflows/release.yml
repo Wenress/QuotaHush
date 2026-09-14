@@ -7,6 +7,7 @@ on:
       - "v*"
 
 permissions:
+  actions: write
   contents: write
   id-token: write
   attestations: write
@@ -112,3 +113,9 @@ jobs:
             Where-Object { $_.Name -match '^(QuotaHush-Setup-x64-.+\.exe|QuotaHush-Windows-x64-.+\.zip|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip|SHA256SUMS\.txt)$' } |
             Select-Object -ExpandProperty FullName
           gh release create $env:GITHUB_REF_NAME $Assets --generate-notes
+      - name: Publish extension marketplaces
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-marketplaces.yml --ref main -f tag=$env:GITHUB_REF_NAME

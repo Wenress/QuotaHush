@@ -1,0 +1,67 @@
+name: Publish extension marketplaces
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: GitHub release tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: marketplaces-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          release_data="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,tagName)"
+          test "$(jq -r '.tagName' <<< "$release_data")" = "$RELEASE_TAG"
+          test "$(jq -r '.isDraft' <<< "$release_data")" = "false"
+          test "$(jq -r '.isPrerelease' <<< "$release_data")" = "false"
+
+      - name: Download released VSIX
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p build
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "quotahush-vscode-*.vsix" \
+            --dir build
+          mapfile -t files < <(find build -maxdepth 1 -type f -name '*.vsix')
+          test "${#files[@]}" -eq 1
+          echo "VSIX=${files[0]}" >> "$GITHUB_ENV"
+
+      - name: Verify tag matches VSIX version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          package_version="$(unzip -p "$VSIX" extension/package.json | jq -r '.version')"
+          test "v$package_version" = "$RELEASE_TAG"
+
+      - name: Publish to Visual Studio Marketplace
+        run: npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --oidc --skip-duplicate
+
+      - name: Publish to Open VSX
+        run: npx --yes ovsx@1.2.0 publish "$VSIX" --trusted-publishing --skip-duplicate
