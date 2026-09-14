@@ -181,7 +181,7 @@ function updateStatusItems(data) {
     : null;
   claudeItem.text = claudeError
     ? "$(warning) Claude"
-    : `$(dashboard) Claude ${claudePercent == null ? "—" : claudePercent + "%"}`;
+    : `$(pulse) Claude ${claudePercent == null ? "—" : claudePercent + "%"}`;
   claudeItem.color = colorForPercent(claudePercent);
   claudeItem.tooltip = buildClaudeTooltip(data.claude, data.fetched_at);
   claudeItem.backgroundColor = claudeError
@@ -194,7 +194,7 @@ function updateStatusItems(data) {
   const codexPercent = window ? Math.round(window.used_percent) : null;
   codexItem.text = codexError
     ? "$(warning) Codex"
-    : `$(dashboard) Codex ${codexPercent == null ? "—" : codexPercent + "%"}`;
+    : `$(pulse) Codex ${codexPercent == null ? "—" : codexPercent + "%"}`;
   codexItem.color = colorForPercent(codexPercent);
   codexItem.tooltip = buildCodexTooltip(data.codex, data.fetched_at);
   codexItem.backgroundColor = codexError
@@ -205,7 +205,7 @@ function updateStatusItems(data) {
   const deepseekBalance = !deepseekError ? deepseekBalanceLine(data.deepseek) : "";
   deepseekItem.text = deepseekError
     ? "$(warning) DeepSeek"
-    : `$(dashboard) DeepSeek ${deepseekBalance || "—"}`;
+    : `$(pulse) DeepSeek ${deepseekBalance || "—"}`;
   deepseekItem.color = undefined;
   deepseekItem.tooltip = buildDeepSeekTooltip(data.deepseek, data.fetched_at);
   deepseekItem.backgroundColor = deepseekError
@@ -217,7 +217,7 @@ function updateStatusItems(data) {
   const zaiPercent = !zaiError ? zaiUsedPercent(data.zai) : null;
   zaiItem.text = zaiError
     ? "$(warning) Z.AI"
-    : `$(dashboard) Z.AI ${zaiBalance == null ? "—" : fmtCompactCount(zaiBalance)}`;
+    : `$(pulse) Z.AI ${zaiBalance == null ? "—" : fmtCompactCount(zaiBalance)}`;
   zaiItem.color = colorForPercent(zaiPercent);
   zaiItem.tooltip = buildZaiTooltip(data.zai, data.fetched_at);
   zaiItem.backgroundColor = zaiError
@@ -327,22 +327,22 @@ function refreshAll() {
 function activate(context) {
   claudeItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000000);
   claudeItem.command = "quotahush.refresh";
-  claudeItem.text = "$(dashboard) Claude";
+  claudeItem.text = "$(pulse) Claude";
   claudeItem.show();
 
   codexItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 999999);
   codexItem.command = "quotahush.refresh";
-  codexItem.text = "$(dashboard) Codex";
+  codexItem.text = "$(pulse) Codex";
   codexItem.show();
 
   deepseekItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 999998);
   deepseekItem.command = "quotahush.refresh";
-  deepseekItem.text = "$(dashboard) DeepSeek";
+  deepseekItem.text = "$(pulse) DeepSeek";
   deepseekItem.show();
 
   zaiItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 999997);
   zaiItem.command = "quotahush.refresh";
-  zaiItem.text = "$(dashboard) Z.AI";
+  zaiItem.text = "$(pulse) Z.AI";
   zaiItem.show();
 
   viewProvider = new UsageViewProvider();
