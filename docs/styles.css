@@ -117,6 +117,7 @@ pre { margin: 1rem 0; padding: 1rem; overflow-x: auto; white-space: pre-wrap; ov
 .client-grid article { padding-top: 1.5rem; border-top: 1px solid var(--line); }
 .client-label { margin-bottom: .5rem; color: var(--cyan) !important; font-size: .76rem; text-transform: uppercase; letter-spacing: .13em; font-weight: 750; }
 .client-grid a, .privacy-points a, .policy-page a { color: var(--cyan); font-weight: 700; text-decoration: none; }
+.link-stack { display: flex; flex-direction: column; gap: .5rem; }
 
 .privacy-section { display: grid; grid-template-columns: .9fr 1fr; gap: clamp(3rem, 9vw, 8rem); border-top: 1px solid var(--line); }
 .privacy-points { display: grid; gap: .8rem; }

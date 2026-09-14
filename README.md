@@ -285,6 +285,16 @@ The popup contacts the local server when opened and refreshes once per minute. F
 
 ## Install the VS Code extension
 
+### From a marketplace
+
+- **VS Code Marketplace:** [QuotaHush](https://marketplace.visualstudio.com/items?itemName=wenress.quotahush-local) — search "QuotaHush" in the Extensions view, or install from the command line:
+
+  ```bash
+  code --install-extension wenress.quotahush-local
+  ```
+
+- **Open VSX** (Cursor, VSCodium, and other compatible editors): [QuotaHush](https://open-vsx.org/extension/wenress/quotahush-local).
+
 ### From a VSIX file
 
 Download `quotahush-vscode-<version>.vsix` from the
