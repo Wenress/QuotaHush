@@ -60,10 +60,16 @@ jobs:
           package_version="$(unzip -p "$VSIX" extension/package.json | jq -r '.version')"
           test "v$package_version" = "$RELEASE_TAG"
 
-      - name: Publish to Visual Studio Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --pat "$VSCE_PAT" --skip-duplicate
-
       - name: Publish to Open VSX
         run: npx --yes ovsx@1.2.0 publish "$VSIX" --trusted-publishing --skip-duplicate
+
+      - name: Publish to Visual Studio Marketplace when configured
+        shell: bash
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [[ -z "$VSCE_PAT" ]]; then
+            echo "Visual Studio Marketplace skipped: VSCE_PAT is not configured." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --pat "$VSCE_PAT" --skip-duplicate
