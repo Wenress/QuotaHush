@@ -2,10 +2,15 @@
 set -euo pipefail
 
 UNIT_DIR="$HOME/.config/systemd/user"
-UNIT_FILES=("$UNIT_DIR/quotahush-server.service")
+UNIT_FILES=(
+  "$UNIT_DIR/quotahush-server.service"
+  "$UNIT_DIR/quotahush-update.service"
+  "$UNIT_DIR/quotahush-update.timer"
+)
 
 systemctl --user stop quotahush-server 2>/dev/null || true
 systemctl --user disable quotahush-server 2>/dev/null || true
+systemctl --user disable --now quotahush-update.timer 2>/dev/null || true
 
 REMOVED=false
 for UNIT_FILE in "${UNIT_FILES[@]}"; do

@@ -9,6 +9,7 @@ const jsonFiles = [
 ];
 const pyprojectFile = new URL("../server/pyproject.toml", import.meta.url);
 const lockFile = new URL("../server/uv.lock", import.meta.url);
+const pythonVersionFile = new URL("../server/src/quotahush_server/version.py", import.meta.url);
 const requested = process.argv[2];
 const checking = requested === "--check";
 const version = checking
@@ -27,6 +28,8 @@ const jsonDocuments = await Promise.all(
 const pyproject = await readFile(pyprojectFile, "utf8");
 const currentPythonVersion = pyproject.match(/^version = "([^"]+)"$/m)?.[1];
 const lock = await readFile(lockFile, "utf8");
+const pythonVersion = await readFile(pythonVersionFile, "utf8");
+const currentRuntimeVersion = pythonVersion.match(/^__version__ = "([^"]+)"$/m)?.[1];
 const lockPattern = /(\[\[package\]\]\r?\nname = "quotahush-server"\r?\nversion = ")[^"]+(")/;
 const currentLockVersion = lock.match(lockPattern)?.[0].match(/version = "([^"]+)"/)?.[1];
 
@@ -38,6 +41,10 @@ if (!currentLockVersion) {
   console.error("Could not find the project version in server/uv.lock");
   process.exit(1);
 }
+if (!currentRuntimeVersion) {
+  console.error("Could not find the runtime version in server/src/quotahush_server/version.py");
+  process.exit(1);
+}
 
 if (checking) {
   for (const [file, document] of jsonDocuments) {
@@ -45,6 +52,7 @@ if (checking) {
   }
   if (currentPythonVersion !== version) mismatches.push(pyprojectFile.pathname);
   if (currentLockVersion !== version) mismatches.push(lockFile.pathname);
+  if (currentRuntimeVersion !== version) mismatches.push(pythonVersionFile.pathname);
 } else {
   await Promise.all([
     ...jsonDocuments.map(([file, document]) => {
@@ -58,6 +66,10 @@ if (checking) {
     writeFile(
       lockFile,
       lock.replace(lockPattern, (_match, prefix, suffix) => `${prefix}${version}${suffix}`),
+    ),
+    writeFile(
+      pythonVersionFile,
+      pythonVersion.replace(/^__version__ = "[^"]+"$/m, `__version__ = "${version}"`),
     ),
     writeFile(versionFile, version + "\n"),
   ]);

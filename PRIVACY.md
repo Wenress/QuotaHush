@@ -26,6 +26,12 @@ contact the companion through `http://127.0.0.1:8765` on the same computer.
 QuotaHush does not transmit credentials or usage information to the project
 authors.
 
+Installed Companions also contact GitHub's release API and official GitHub
+release download URLs to check for stable updates. Automatic updating can be
+disabled with `QUOTAHUSH_AUTO_UPDATE=0` in the QuotaHush configuration file.
+Release artifacts are checked against the published SHA-256 file before they
+are installed.
+
 ## Local storage
 
 Provider responses may be cached locally to reduce upstream requests and to
@@ -40,6 +46,10 @@ Default QuotaHush locations are:
 - Linux configuration: `${XDG_CONFIG_HOME:-~/.config}/quotahush`;
 - Linux cache and state: `~/.cache/quotahush` and
   `~/.local/state/quotahush`.
+
+On Windows, downloaded updates are kept under
+`%LOCALAPPDATA%\QuotaHush\updates` and updater activity is written to
+`%LOCALAPPDATA%\QuotaHush\logs\updater.log`.
 
 Uninstalling the companion does not delete provider credentials. The user may
 remove the QuotaHush directories above to delete its configuration, cache, and

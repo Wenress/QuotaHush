@@ -8,6 +8,11 @@ VENV_PYTHON="$SERVER_DIR/.venv/bin/python3"
 UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_NAME="quotahush-server"
 UNIT_FILE="$UNIT_DIR/$UNIT_NAME.service"
+UPDATE_UNIT_NAME="quotahush-update"
+UPDATE_SERVICE_FILE="$UNIT_DIR/$UPDATE_UNIT_NAME.service"
+UPDATE_TIMER_FILE="$UNIT_DIR/$UPDATE_UNIT_NAME.timer"
+INSTALL_ROOT="$(cd "$SERVER_DIR/../.." && pwd)"
+UPDATE_SCRIPT="$INSTALL_ROOT/update.sh"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quotahush"
 ENV_FILE="$CONFIG_DIR/.var.env"
 
@@ -47,6 +52,8 @@ fi
 
 systemctl --user disable --now "$UNIT_NAME" 2>/dev/null || true
 rm -f "$UNIT_FILE"
+systemctl --user disable --now "$UPDATE_UNIT_NAME.timer" 2>/dev/null || true
+rm -f "$UPDATE_SERVICE_FILE" "$UPDATE_TIMER_FILE"
 
 mkdir -p "$UNIT_DIR"
 cat > "$UNIT_FILE" <<EOF
@@ -66,9 +73,41 @@ RestartSec=3
 WantedBy=default.target
 EOF
 
+if [ -x "$UPDATE_SCRIPT" ]; then
+  cat > "$UPDATE_SERVICE_FILE" <<EOF
+[Unit]
+Description=Check for a stable QuotaHush Companion update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=QUOTAHUSH_SCHEDULED_UPDATE=1
+ExecStart=/usr/bin/env bash "$UPDATE_SCRIPT"
+EOF
+
+  cat > "$UPDATE_TIMER_FILE" <<EOF
+[Unit]
+Description=Periodically check for QuotaHush Companion updates
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable --now "$UNIT_NAME"
+if [ -f "$UPDATE_TIMER_FILE" ]; then
+  systemctl --user enable --now "$UPDATE_UNIT_NAME.timer"
+fi
 
 echo "Installed and started. Check status with:"
 echo "  systemctl --user status $UNIT_NAME"
+echo "  systemctl --user status $UPDATE_UNIT_NAME.timer"
 echo "  curl http://127.0.0.1:8765/health"

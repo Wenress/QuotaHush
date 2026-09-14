@@ -16,6 +16,7 @@ from quotahush_server.api import (
     _collect_usage,
 )
 from quotahush_server.diagnostics import _configure_logging, _logger
+from quotahush_server.updater import start_auto_update_thread
 
 SELF_POLL_SECONDS = 600
 HEARTBEAT_MAX_AGE_SECONDS = 5
@@ -104,6 +105,7 @@ def run() -> None:
     print(f"quotahush-server listening on http://{HOST}:{PORT}", file=sys.stderr)
     _logger.info("listening on http://%s:%s", HOST, PORT)
     threading.Thread(target=_self_poll_loop, daemon=True).start()
+    start_auto_update_thread()
     heartbeat_path = os.environ.get("QUOTAHUSH_HEARTBEAT_PATH")
     if heartbeat_path:
         threading.Thread(

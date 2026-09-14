@@ -61,10 +61,13 @@ jobs:
           Copy-Item build/windows/quotahush-server.exe $Stage/
           Copy-Item installer/windows/install.ps1 $Stage/
           Copy-Item installer/windows/uninstall.ps1 $Stage/
+          Copy-Item installer/windows/manage-autostart.ps1 $Stage/
+          Copy-Item installer/windows/update-windows.ps1 $Stage/
           Copy-Item .var.env.example $Stage/
           Copy-Item LICENSE $Stage/
           Copy-Item PRIVACY.md $Stage/
           Compress-Archive -Path "$Stage/*" -DestinationPath "build/QuotaHush-Windows-x64-$Version.zip"
+          git archive --format=tar.gz --output="build/quotahush-linux-$Version.tar.gz" HEAD
       - name: Package client extensions
         shell: pwsh
         run: |
@@ -78,7 +81,7 @@ jobs:
         shell: pwsh
         run: |
           $ReleaseFiles = Get-ChildItem build -File |
-            Where-Object { $_.Name -match '^(QuotaHush-Setup-x64-.+\.exe|QuotaHush-Windows-x64-.+\.zip|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip)$' } |
+            Where-Object { $_.Name -match '^(QuotaHush-Setup-x64-.+\.exe|QuotaHush-Windows-x64-.+\.zip|quotahush-linux-.+\.tar\.gz|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip)$' } |
             Sort-Object Name
           $Checksums = $ReleaseFiles | ForEach-Object {
             $Hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -92,6 +95,7 @@ jobs:
           subject-path: |
             build/QuotaHush-Setup-x64-*.exe
             build/QuotaHush-Windows-x64-*.zip
+            build/quotahush-linux-*.tar.gz
             build/quotahush-vscode-*.vsix
             build/quotahush-chromium-*.zip
       - uses: actions/upload-artifact@v4
@@ -100,6 +104,7 @@ jobs:
           path: |
             build/QuotaHush-Setup-x64-*.exe
             build/QuotaHush-Windows-x64-*.zip
+            build/quotahush-linux-*.tar.gz
             build/quotahush-vscode-*.vsix
             build/quotahush-chromium-*.zip
             build/SHA256SUMS.txt
@@ -110,7 +115,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $Assets = Get-ChildItem build -File |
-            Where-Object { $_.Name -match '^(QuotaHush-Setup-x64-.+\.exe|QuotaHush-Windows-x64-.+\.zip|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip|SHA256SUMS\.txt)$' } |
+            Where-Object { $_.Name -match '^(QuotaHush-Setup-x64-.+\.exe|QuotaHush-Windows-x64-.+\.zip|quotahush-linux-.+\.tar\.gz|quotahush-vscode-.+\.vsix|quotahush-chromium-.+\.zip|SHA256SUMS\.txt)$' } |
             Select-Object -ExpandProperty FullName
           gh release create $env:GITHUB_REF_NAME $Assets --generate-notes
       - name: Publish extension marketplaces

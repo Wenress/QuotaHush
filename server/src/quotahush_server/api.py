@@ -11,6 +11,8 @@ from urllib.parse import urlsplit
 
 from quotahush_server.diagnostics import _log_provider_result, _logger
 from quotahush_server.providers import claude, codex, deepseek, zai
+from quotahush_server.updater import get_update_status
+from quotahush_server.version import __version__
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("QUOTAHUSH_PORT", "8765"))
@@ -132,6 +134,14 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/usage":
             self._send_json(200, _collect_usage())
         elif self.path == "/health":
-            self._send_json(200, {"status": "ok", "product": "QuotaHush"})
+            self._send_json(
+                200,
+                {
+                    "status": "ok",
+                    "product": "QuotaHush",
+                    "version": __version__,
+                    "update": get_update_status(),
+                },
+            )
         else:
             self._send_json(404, {"error": "not_found"})

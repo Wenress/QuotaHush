@@ -8,7 +8,7 @@ A lightweight, local usage monitor for **Claude Code**, **OpenAI Codex**, **Deep
 > [!IMPORTANT]
 > QuotaHush is an independent, unofficial project. It is not affiliated with or endorsed by Anthropic, OpenAI, Z.AI, or the project acknowledged above.
 
-[Website](https://wenress.github.io/QuotaHush/) · [Verify downloads](VERIFYING_RELEASES.md) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [License](LICENSE)
+[Website](https://wenress.github.io/QuotaHush/) · [Verify downloads](VERIFYING_RELEASES.md) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 ## Quick start
 
@@ -56,7 +56,8 @@ QuotaHush brings a lightweight AI-usage monitoring experience to Windows and Lin
 - a VS Code extension with status-bar indicators and a dedicated panel;
 - a lightweight local server with no third-party Python runtime dependencies;
 - caching and backoff to avoid excessive upstream requests;
-- automatic startup through Windows Task Scheduler or Linux `systemd --user`;
+- automatic startup through Windows Task Scheduler (with standard per-user
+  startup fallbacks) or Linux `systemd --user`;
 - installation with standard Python; `uv` is supported but optional.
 
 ## How it works
@@ -207,10 +208,12 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Wenress/
 The bootstrap downloads the repository into
 `${XDG_DATA_HOME:-~/.local/share}/quotahush/app`, creates a Python environment,
 and installs the `quotahush-server` user service without requiring root access.
+It downloads a versioned release archive and verifies its published SHA-256
+checksum before installation.
 To install a specific release tag, export it before running the installer:
 
 ```bash
-export QUOTAHUSH_REF=v0.1.2
+export QUOTAHUSH_REF=v0.1.4
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash
 ```
 
@@ -260,10 +263,10 @@ Open `http://127.0.0.1:8765/health` or run:
 curl http://127.0.0.1:8765/health
 ```
 
-Expected response:
+Example response:
 
 ```json
-{"status": "ok", "product": "QuotaHush"}
+{"status": "ok", "product": "QuotaHush", "version": "0.1.4", "update": {"enabled": true, "state": "scheduled", "current_version": "0.1.4", "latest_version": null}}
 ```
 
 ## Install the browser extension
@@ -308,7 +311,7 @@ Download `quotahush-vscode-<version>.vsix` from the
 Alternatively, use the command line:
 
 ```bash
-code --install-extension quotahush-vscode-0.1.2.vsix
+code --install-extension quotahush-vscode-<version>.vsix
 ```
 
 ### Build the VSIX from source
@@ -325,20 +328,25 @@ With Node.js installed, run from the repository root:
 ```bash
 cd vscode-extension
 npx --yes @vscode/vsce package --allow-missing-repository --skip-license --readmePath ../README.md
-code --install-extension quotahush-local-0.1.2.vsix
+code --install-extension quotahush-local-<version>.vsix
 ```
 
 After VS Code reloads, the status bar shows separate Claude, Codex, DeepSeek, and Z.AI indicators. The QuotaHush Activity Bar icon opens the full view. Run **QuotaHush: Refresh Usage** to force an immediate update.
 
 ## Update
 
-1. on Windows, run the latest setup again; on Linux, rerun the one-line
-   installer; for a source checkout, pull the latest changes and rerun its
-   installation script;
-2. select **Reload** for QuotaHush on the browser extensions page;
-3. reinstall the new VSIX if you use the VS Code integration.
+Installed Windows and Linux Companions check the official stable GitHub release
+every six hours and update automatically after verifying the release SHA-256.
+They never install prereleases or code from a branch. Set
+`QUOTAHUSH_AUTO_UPDATE=0` in the QuotaHush `.var.env` file to opt out. The first
+release that adds this feature must be installed manually once.
 
-The installers can be run again safely when upgrading QuotaHush.
+Marketplace clients update through their editor or browser store. If you use an
+unpacked Chromium extension or a manually installed VSIX, download and install
+the new client package yourself.
+
+For a source checkout, pull the latest changes and rerun its installation
+script. Installers remain safe to rerun manually.
 
 ## Uninstall
 
@@ -372,8 +380,10 @@ Then remove QuotaHush from the browser extensions page and the VS Code Extension
 ### A client reports that the server is offline
 
 - check `http://127.0.0.1:8765/health`;
-- on Windows, inspect the `QuotaHush Companion` value under
-  `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`;
+- on Windows, run `Get-ScheduledTask QuotaHushServer`; on managed accounts
+  where Task Scheduler registration is denied, inspect the `QuotaHush Companion`
+  value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` and the
+  current user's Startup folder;
 - on Linux, run `systemctl --user status quotahush-server`;
 - make sure another application is not already using port `8765`.
 

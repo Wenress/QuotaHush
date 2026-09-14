@@ -107,7 +107,7 @@
             <li>Run the setup. It installs for your account without administrator privileges.</li>
             <li>Open the browser or VS Code extension.</li>
           </ol>
-          <p class="note">Python is not required. Setup downloads no additional code and QuotaHush starts automatically when you sign in.</p>
+          <p class="note">Python is not required. Setup downloads no additional code, QuotaHush starts automatically when you sign in, and future stable Companion updates install automatically.</p>
           <p class="note warning"><strong>Unsigned preview:</strong> Windows may show “Unknown publisher”. <a href="https://github.com/Wenress/QuotaHush/blob/main/VERIFYING_RELEASES.md">Verify the release checksum or GitHub provenance</a> before running it.</p>
         </article>
 
@@ -116,7 +116,7 @@
           <p>Install for your user account with one command:</p>
           <pre><code>curl --proto '=https' --tlsv1.2 -fsSL \
 https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash</code></pre>
-          <p class="note">Uses a <code>systemd --user</code> service and does not require root access.</p>
+          <p class="note">Uses <code>systemd --user</code>, verifies release checksums, updates automatically, and does not require root access.</p>
         </article>
       </div>
 
@@ -185,6 +185,10 @@ https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash</code
         <details>
           <summary>Can another device reach the Companion?</summary>
           <p>No. It listens only on <code>127.0.0.1</code>, the loopback address of your computer.</p>
+        </details>
+        <details>
+          <summary>How are Companion updates handled?</summary>
+          <p>Installed Companions check official stable GitHub releases every six hours and verify the published SHA-256 before installing. Set <code>QUOTAHUSH_AUTO_UPDATE=0</code> in the configuration file to opt out.</p>
         </details>
         <details>
           <summary>Why does Windows show “Unknown publisher”?</summary>

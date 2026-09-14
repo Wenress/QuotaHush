@@ -49,16 +49,17 @@ Source: "{#RepositoryRoot}\.var.env.example"; DestDir: "{localappdata}\QuotaHush
 Source: "{#RepositoryRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RepositoryRoot}\PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "manage-process.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "manage-autostart.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "update-windows.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "verify-health.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
-[Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "QuotaHush Companion"; ValueData: """{app}\quotahush-server.exe"""; Flags: uninsdeletevalue
-
 [Run]
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-autostart.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"""; Flags: runhidden waituntilterminated
 Filename: "{app}\quotahush-server.exe"; WorkingDir: "{app}"; Flags: runhidden nowait; AfterInstall: VerifyCompanion
 Filename: "{sys}\notepad.exe"; Parameters: """{localappdata}\QuotaHush\.var.env"""; Description: "Configure optional DeepSeek and Z.AI API keys"; Flags: postinstall skipifsilent unchecked
 
 [UninstallRun]
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-autostart.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"" -Remove"; Flags: runhidden waituntilterminated; RunOnceId: "RemoveQuotaHushAutostart"
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-process.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"""; Flags: runhidden waituntilterminated; RunOnceId: "StopQuotaHush"
 
 [Code]

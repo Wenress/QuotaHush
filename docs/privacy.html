@@ -29,6 +29,7 @@
     <section>
       <h2>Network communication</h2>
       <p>QuotaHush Companion contacts only the provider endpoints needed for the features you enable. The browser and Visual Studio Code extensions contact the Companion through <code>http://127.0.0.1:8765</code> on the same computer. QuotaHush does not transmit credentials or usage information to the project authors.</p>
+      <p>Installed Companions also contact GitHub's release API and official GitHub release download URLs to check for stable updates. Set <code>QUOTAHUSH_AUTO_UPDATE=0</code> in the configuration file to opt out. Release artifacts are checked against the published SHA-256 before installation.</p>
     </section>
 
     <section>
@@ -39,6 +40,7 @@
         <li>Linux configuration: <code>${XDG_CONFIG_HOME:-~/.config}/quotahush</code></li>
         <li>Linux cache and state: <code>~/.cache/quotahush</code> and <code>~/.local/state/quotahush</code></li>
       </ul>
+      <p>On Windows, downloaded updates are kept under <code>%LOCALAPPDATA%\QuotaHush\updates</code> and updater activity is written to <code>%LOCALAPPDATA%\QuotaHush\logs\updater.log</code>.</p>
       <p>Uninstalling the Companion does not delete provider credentials. You may remove the QuotaHush directories above to delete its configuration, cache, and logs.</p>
     </section>
 
