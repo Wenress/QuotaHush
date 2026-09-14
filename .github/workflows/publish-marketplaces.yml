@@ -61,7 +61,9 @@ jobs:
           test "v$package_version" = "$RELEASE_TAG"
 
       - name: Publish to Visual Studio Marketplace
-        run: npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --oidc --skip-duplicate
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --pat "$VSCE_PAT" --skip-duplicate
 
       - name: Publish to Open VSX
         run: npx --yes ovsx@1.2.0 publish "$VSIX" --trusted-publishing --skip-duplicate
