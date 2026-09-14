@@ -210,7 +210,7 @@ and installs the `quotahush-server` user service without requiring root access.
 To install a specific release tag, export it before running the installer:
 
 ```bash
-export QUOTAHUSH_REF=v0.1.0
+export QUOTAHUSH_REF=v0.1.1
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Wenress/QuotaHush/main/install.sh | bash
 ```
 
@@ -298,7 +298,7 @@ Download `quotahush-vscode-<version>.vsix` from the
 Alternatively, use the command line:
 
 ```bash
-code --install-extension quotahush-vscode-0.1.0.vsix
+code --install-extension quotahush-vscode-0.1.1.vsix
 ```
 
 ### Build the VSIX from source
@@ -315,7 +315,7 @@ With Node.js installed, run from the repository root:
 ```bash
 cd vscode-extension
 npx --yes @vscode/vsce package --allow-missing-repository --skip-license --readmePath ../README.md
-code --install-extension quotahush-local-0.1.0.vsix
+code --install-extension quotahush-local-0.1.1.vsix
 ```
 
 After VS Code reloads, the status bar shows separate Claude, Codex, DeepSeek, and Z.AI indicators. The QuotaHush Activity Bar icon opens the full view. Run **QuotaHush: Refresh Usage** to force an immediate update.
