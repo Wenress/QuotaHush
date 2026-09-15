@@ -27,7 +27,7 @@ function providerEnvPath(environment = process.env, home = os.homedir()) {
     return path.resolve(environment.QUOTAHUSH_ENV_FILE);
   }
   if (environment.LOCALAPPDATA) {
-    return path.join(environment.LOCALAPPDATA, "QuotaHush", ".var.env");
+    return path.win32.join(environment.LOCALAPPDATA, "QuotaHush", ".var.env");
   }
   const configHome = environment.XDG_CONFIG_HOME || path.join(home, ".config");
   return path.join(configHome, "quotahush", ".var.env");
