@@ -1,6 +1,6 @@
 # QuotaHush Privacy Policy
 
-Last updated: September 14, 2026
+Last updated: September 15, 2026
 
 QuotaHush is a local companion service with browser and Visual Studio Code
 clients. It has no project-operated backend, advertising, analytics, telemetry,
@@ -13,6 +13,11 @@ and Codex CLI. It may also read DeepSeek and Z.AI credentials that the user
 places in the QuotaHush configuration file. Credentials are used only to make
 requests to the corresponding provider and are never returned by the local API
 or displayed by the clients.
+
+The Visual Studio Code client can optionally accept DeepSeek and Z.AI
+credentials through a masked input and write them directly to the same local
+QuotaHush configuration file. These values are not stored in VS Code settings,
+Settings Sync, extension state, telemetry, or logs.
 
 The local clients receive normalized usage information such as plan names,
 quota percentages, reset times, credit balances, spend, token counts, and

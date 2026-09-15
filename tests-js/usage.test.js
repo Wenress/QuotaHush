@@ -2,6 +2,95 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const usage = require("../shared/usage");
+const {
+  isProviderDetected,
+  normalizeProviderMode,
+  shouldShowProvider,
+} = require("../vscode-extension/provider-settings");
+const {
+  providerEnvPath,
+  updateEnvText,
+  writeCredential,
+} = require("../vscode-extension/credential-config");
+
+test("updates the Companion credential file without duplicating keys", () => {
+  const source = [
+    "# Keep this comment",
+    "DEEPSEEK_API_KEY=old",
+    "ZAI_API_KEY=keep",
+    "DEEPSEEK_API_KEY=duplicate",
+    "",
+  ].join("\n");
+  const updated = updateEnvText(source, "DEEPSEEK_API_KEY", "new=value");
+
+  assert.match(updated, /^# Keep this comment/m);
+  assert.match(updated, /^DEEPSEEK_API_KEY=new=value$/m);
+  assert.match(updated, /^ZAI_API_KEY=keep$/m);
+  assert.equal((updated.match(/^DEEPSEEK_API_KEY=/gm) || []).length, 1);
+  assert.equal(updateEnvText(updated, "DEEPSEEK_API_KEY", "").includes("DEEPSEEK_API_KEY=\n"), true);
+});
+
+test("uses the same installed credential paths as the Companion", () => {
+  assert.equal(
+    providerEnvPath({ LOCALAPPDATA: "C:\\Users\\Test\\AppData\\Local" }, "C:\\Users\\Test"),
+    "C:\\Users\\Test\\AppData\\Local\\QuotaHush\\.var.env",
+  );
+  assert.equal(
+    providerEnvPath({ XDG_CONFIG_HOME: "/tmp/config" }, "/home/test"),
+    require("path").join("/tmp/config", "quotahush", ".var.env"),
+  );
+});
+
+test("writes and replaces credentials atomically", async (context) => {
+  const fs = require("fs/promises");
+  const os = require("os");
+  const path = require("path");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "quotahush-test-"));
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const envPath = path.join(directory, ".var.env");
+
+  await writeCredential("ZAI_API_KEY", "first", envPath);
+  await writeCredential("ZAI_API_KEY", "second", envPath);
+
+  assert.match(await fs.readFile(envPath, "utf8"), /^ZAI_API_KEY=second$/m);
+  assert.deepEqual(
+    (await fs.readdir(directory)).sort(),
+    [".var.env"],
+  );
+});
+
+test("applies VS Code provider auto, enabled, and disabled modes", () => {
+  assert.equal(isProviderDetected({ plan_type: "pro" }), true);
+  assert.equal(isProviderDetected({ error: "network_error" }), true);
+  assert.equal(isProviderDetected({ error: "not_logged_in" }), false);
+  assert.equal(isProviderDetected({ error: "not_configured" }), false);
+  assert.equal(shouldShowProvider("auto", true), true);
+  assert.equal(shouldShowProvider("auto", false), false);
+  assert.equal(shouldShowProvider("enabled", false), true);
+  assert.equal(shouldShowProvider("disabled", true), false);
+  assert.equal(normalizeProviderMode("unexpected"), "auto");
+});
+
+test("formats reset countdowns with the exact local reset time", () => {
+  const originalNow = Date.now;
+  const now = new Date(2026, 8, 15, 19, 33, 0).getTime();
+  const reset = new Date(2026, 8, 15, 22, 33, 0);
+  Date.now = () => now;
+
+  try {
+    assert.equal(usage.fmtResetAt(reset.toISOString()), "3h 0m at 22:33");
+    assert.equal(
+      usage.fmtCodexReset({ reset_at: reset.getTime() / 1000 }),
+      "3h 0m at 22:33",
+    );
+    assert.equal(
+      usage.fmtCodexReset({ reset_after_seconds: 3 * 60 * 60 }),
+      "3h 0m at 22:33",
+    );
+  } finally {
+    Date.now = originalNow;
+  }
+});
 
 test("classifies Codex windows by duration", () => {
   const fiveHour = { limit_window_seconds: 5 * 60 * 60, used_percent: 20 };

@@ -1,6 +1,12 @@
 const vscode = require("vscode");
 const http = require("http");
 const PROVIDER_ICONS = require("./provider-icons");
+const { CREDENTIALS, writeCredential } = require("./credential-config");
+const {
+  PROVIDERS,
+  isProviderDetected,
+  shouldShowProvider,
+} = require("./provider-settings");
 const {
   codexCreditsLine,
   codexWindows,
@@ -35,8 +41,29 @@ let zaiItem;
 let timer;
 let refreshPromise;
 let viewProvider;
-let deepseekConfigured = false;
-let zaiConfigured = false;
+const providerItems = {};
+const detectedProviders = {
+  claude: true,
+  codex: true,
+  deepseek: false,
+  zai: false,
+};
+
+function providerMode(provider) {
+  return vscode.workspace
+    .getConfiguration("quotahush.providers")
+    .get(provider, "auto");
+}
+
+function providerIsVisible(provider) {
+  return shouldShowProvider(providerMode(provider), detectedProviders[provider]);
+}
+
+function applyProviderVisibility() {
+  for (const provider of PROVIDERS) {
+    if (!providerIsVisible(provider)) providerItems[provider]?.hide();
+  }
+}
 
 function colorForPercent(percent) {
   if (percent == null || Number.isNaN(percent)) return undefined;
@@ -174,10 +201,11 @@ function buildZaiTooltip(zai, fetchedAt) {
 }
 
 function updateStatusItems(data) {
-  for (const item of [claudeItem, codexItem]) {
-    item.command = "quotahush.refresh";
-    item.show();
+  for (const provider of PROVIDERS) {
+    detectedProviders[provider] = isProviderDetected(data[provider]);
+    providerItems[provider].command = "quotahush.refresh";
   }
+
   const claudeError = data.claude?.error;
   const claudePercent = data.claude && !claudeError
     ? Math.round(data.claude.five_hour.utilization)
@@ -190,6 +218,8 @@ function updateStatusItems(data) {
   claudeItem.backgroundColor = claudeError
     ? new vscode.ThemeColor("statusBarItem.errorBackground")
     : undefined;
+  if (providerIsVisible("claude")) claudeItem.show();
+  else claudeItem.hide();
 
   const codexError = data.codex?.error;
   const limits = data.codex && !codexError ? codexWindows(data.codex) : {};
@@ -203,9 +233,10 @@ function updateStatusItems(data) {
   codexItem.backgroundColor = codexError
     ? new vscode.ThemeColor("statusBarItem.errorBackground")
     : undefined;
+  if (providerIsVisible("codex")) codexItem.show();
+  else codexItem.hide();
 
-  deepseekConfigured = Boolean(data.deepseek) && data.deepseek.error !== "not_configured";
-  if (!deepseekConfigured) {
+  if (!providerIsVisible("deepseek")) {
     deepseekItem.hide();
   } else {
     const deepseekError = data.deepseek?.error || data.deepseek?.balance?.error;
@@ -222,8 +253,7 @@ function updateStatusItems(data) {
     deepseekItem.show();
   }
 
-  zaiConfigured = Boolean(data.zai) && data.zai.error !== "not_configured";
-  if (!zaiConfigured) {
+  if (!providerIsVisible("zai")) {
     zaiItem.hide();
   } else {
     const zaiError = data.zai?.error;
@@ -247,19 +277,13 @@ function markOffline(error) {
     `Can't reach QuotaHush Companion on 127.0.0.1:8765.\n\n` +
     `[Install or update QuotaHush Companion](${COMPANION_URL})\n\n${escapeMarkdown(error.message)}`,
   );
-  for (const [item, label] of [[claudeItem, "Claude"], [codexItem, "Codex"]]) {
-    item.text = `$(warning) ${label} offline`;
-    item.color = undefined;
-    item.tooltip = message;
-    item.command = "quotahush.installCompanion";
-    item.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
-    item.show();
-  }
-  for (const [item, label, configured] of [
-    [deepseekItem, "DeepSeek", deepseekConfigured],
-    [zaiItem, "Z.AI", zaiConfigured],
+  for (const [provider, item, label] of [
+    ["claude", claudeItem, "Claude"],
+    ["codex", codexItem, "Codex"],
+    ["deepseek", deepseekItem, "DeepSeek"],
+    ["zai", zaiItem, "Z.AI"],
   ]) {
-    if (!configured) {
+    if (!providerIsVisible(provider)) {
       item.hide();
       continue;
     }
@@ -331,10 +355,10 @@ class UsageViewProvider {
       return;
     }
     const body =
-      renderClaudeHtml(data.claude) +
-      renderCodexHtml(data.codex) +
-      renderDeepSeekHtml(data.deepseek) +
-      renderZaiHtml(data.zai);
+      (providerIsVisible("claude") ? renderClaudeHtml(data.claude) : "") +
+      (providerIsVisible("codex") ? renderCodexHtml(data.codex) : "") +
+      (providerIsVisible("deepseek") ? renderDeepSeekHtml(data.deepseek) : "") +
+      (providerIsVisible("zai") ? renderZaiHtml(data.zai) : "");
     const meta = "Updated " + new Date(data.fetched_at).toLocaleTimeString();
     this.view.webview.html = webviewHtml(body, meta);
   }
@@ -357,6 +381,52 @@ function refreshAll() {
   return refreshPromise;
 }
 
+async function configureCredential() {
+  const credential = await vscode.window.showQuickPick(CREDENTIALS, {
+    placeHolder: "Choose a QuotaHush credential",
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!credential) return;
+
+  const action = await vscode.window.showQuickPick(
+    [
+      { label: "Set or replace", value: "set", detail: `Save ${credential.label} locally` },
+      { label: "Remove", value: "remove", detail: `Clear ${credential.label} from QuotaHush` },
+    ],
+    { placeHolder: credential.label },
+  );
+  if (!action) return;
+
+  let value = "";
+  if (action.value === "set") {
+    const entered = await vscode.window.showInputBox({
+      title: `QuotaHush: ${credential.label}`,
+      prompt: credential.detail,
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (candidate) => {
+        if (!candidate.trim()) return "Enter a credential, or cancel to keep the current value.";
+        if (/\r|\n/.test(candidate)) return "Credentials cannot contain new lines.";
+        return undefined;
+      },
+    });
+    if (entered == null) return;
+    value = entered.trim();
+  }
+
+  try {
+    await writeCredential(credential.key, value);
+    const verb = action.value === "set" ? "saved" : "removed";
+    vscode.window.showInformationMessage(`QuotaHush: ${credential.label} ${verb}.`);
+    await refreshAll();
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `QuotaHush could not update its local credential file: ${error.message}`,
+    );
+  }
+}
+
 function activate(context) {
   claudeItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000000);
   claudeItem.command = "quotahush.refresh";
@@ -376,6 +446,14 @@ function activate(context) {
   zaiItem.command = "quotahush.refresh";
   zaiItem.text = "$(pulse) Z.AI";
 
+  Object.assign(providerItems, {
+    claude: claudeItem,
+    codex: codexItem,
+    deepseek: deepseekItem,
+    zai: zaiItem,
+  });
+  applyProviderVisibility();
+
   viewProvider = new UsageViewProvider();
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("quotahush.view", viewProvider),
@@ -383,6 +461,18 @@ function activate(context) {
     vscode.commands.registerCommand("quotahush.installCompanion", () =>
       vscode.env.openExternal(vscode.Uri.parse(COMPANION_URL)),
     ),
+    vscode.commands.registerCommand("quotahush.configureProviders", () =>
+      vscode.commands.executeCommand(
+        "workbench.action.openSettings",
+        "@ext:wenress.quotahush-local quotahush.providers",
+      ),
+    ),
+    vscode.commands.registerCommand("quotahush.configureCredentials", configureCredential),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration("quotahush.providers")) return;
+      applyProviderVisibility();
+      refreshAll();
+    }),
     claudeItem,
     codexItem,
     deepseekItem,

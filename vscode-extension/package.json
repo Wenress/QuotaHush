@@ -2,7 +2,7 @@
   "name": "quotahush-local",
   "displayName": "QuotaHush",
   "description": "Shows Claude Code, Codex, DeepSeek, and Z.AI usage in the status bar through the QuotaHush local server.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "wenress",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -44,8 +44,65 @@
       {
         "command": "quotahush.installCompanion",
         "title": "QuotaHush: Install Companion"
+      },
+      {
+        "command": "quotahush.configureProviders",
+        "title": "QuotaHush: Configure Tracked Providers"
+      },
+      {
+        "command": "quotahush.configureCredentials",
+        "title": "QuotaHush: Configure API Credentials"
       }
     ],
+    "configuration": {
+      "title": "QuotaHush",
+      "properties": {
+        "quotahush.providers.claude": {
+          "type": "string",
+          "enum": ["auto", "enabled", "disabled"],
+          "enumDescriptions": [
+            "Show Claude when QuotaHush detects a local Claude login.",
+            "Always show Claude, including authentication errors.",
+            "Hide Claude from the status bar and Usage view."
+          ],
+          "default": "auto",
+          "description": "Controls Claude quota tracking in the VS Code extension."
+        },
+        "quotahush.providers.codex": {
+          "type": "string",
+          "enum": ["auto", "enabled", "disabled"],
+          "enumDescriptions": [
+            "Show Codex when QuotaHush detects a local Codex login.",
+            "Always show Codex, including authentication errors.",
+            "Hide Codex from the status bar and Usage view."
+          ],
+          "default": "auto",
+          "description": "Controls Codex quota tracking in the VS Code extension."
+        },
+        "quotahush.providers.deepseek": {
+          "type": "string",
+          "enum": ["auto", "enabled", "disabled"],
+          "enumDescriptions": [
+            "Show DeepSeek when its API credentials are configured.",
+            "Always show DeepSeek, including configuration errors.",
+            "Hide DeepSeek from the status bar and Usage view."
+          ],
+          "default": "auto",
+          "description": "Controls DeepSeek quota tracking in the VS Code extension."
+        },
+        "quotahush.providers.zai": {
+          "type": "string",
+          "enum": ["auto", "enabled", "disabled"],
+          "enumDescriptions": [
+            "Show Z.AI when its API credentials are configured.",
+            "Always show Z.AI, including configuration errors.",
+            "Hide Z.AI from the status bar and Usage view."
+          ],
+          "default": "auto",
+          "description": "Controls Z.AI quota tracking in the VS Code extension."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

@@ -73,7 +73,7 @@ The server exposes only two endpoints:
 - `GET /health` checks whether the server is running;
 - `GET /usage` returns the aggregated provider data.
 
-The server binds exclusively to `127.0.0.1`, so it is not reachable from other devices on the network. Credentials stay on your computer and are never sent to the browser or VS Code extensions. They are used only to contact the original provider. If an access token expires, the server can use the CLI refresh token and safely update the corresponding local credentials file.
+The server binds exclusively to `127.0.0.1`, so it is not reachable from other devices on the network. Credentials stay on your computer and are never returned by the local API. They are used only to contact the original provider. If an access token expires, the server can use the CLI refresh token and safely update the corresponding local credentials file.
 
 Claude, DeepSeek, and Z.AI responses are cached for five minutes. Codex uses a shorter cache. When a provider fails temporarily, QuotaHush may show the latest valid result and label it as cached data.
 
@@ -332,6 +332,23 @@ code --install-extension quotahush-local-<version>.vsix
 ```
 
 After VS Code reloads, the status bar shows separate Claude, Codex, DeepSeek, and Z.AI indicators. The QuotaHush Activity Bar icon opens the full view. Run **QuotaHush: Refresh Usage** to force an immediate update.
+
+To choose which providers appear in VS Code, run **QuotaHush: Configure Tracked
+Providers** from the Command Palette. Each provider supports three modes:
+
+- `auto` shows it when the local Companion detects its credentials;
+- `enabled` always shows it, including authentication or configuration errors;
+- `disabled` hides it from both the status bar and the QuotaHush Usage view.
+
+These preferences affect only the VS Code client. They do not remove provider
+credentials or change what a separately installed Chromium client displays.
+
+DeepSeek and Z.AI credentials can also be managed without opening `.var.env`:
+run **QuotaHush: Configure API Credentials** from the Command Palette, choose a
+credential, then set, replace, or remove it. The input is masked and written
+directly to the Companion's local configuration file; it is not stored in VS
+Code settings or Settings Sync. Claude and Codex authentication remains managed
+by `claude auth login` and `codex login`.
 
 ## Update
 

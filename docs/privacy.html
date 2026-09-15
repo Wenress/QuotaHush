@@ -16,13 +16,14 @@
     <nav aria-label="Primary navigation"><a href="./">Home</a><a href="https://github.com/Wenress/QuotaHush">GitHub</a></nav>
   </header>
   <main id="main" class="policy-page">
-    <p class="kicker">Last updated September 14, 2026</p>
+    <p class="kicker">Last updated September 15, 2026</p>
     <h1>Privacy policy</h1>
     <p class="policy-lede">QuotaHush is a local companion service with browser and Visual Studio Code clients. It has no project-operated backend, advertising, analytics, telemetry, or crash-reporting service.</p>
 
     <section>
       <h2>Data processed locally</h2>
       <p>QuotaHush may read credentials already stored for Claude Code and Codex CLI. It may also read DeepSeek and Z.AI credentials that you place in the QuotaHush configuration file. Credentials are used only to make requests to the corresponding provider and are never returned by the local API or displayed by the clients.</p>
+      <p>The Visual Studio Code client can optionally accept DeepSeek and Z.AI credentials through a masked input and write them directly to that local configuration file. Values are not stored in VS Code settings, Settings Sync, extension state, telemetry, or logs.</p>
       <p>The clients receive normalized usage information such as plan names, quota percentages, reset times, credit balances, spend, token counts, and request counts. QuotaHush does not read prompts or conversation contents.</p>
     </section>
 

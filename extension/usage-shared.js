@@ -34,10 +34,24 @@
     return `${minutes}m`;
   }
 
+  function fmtLocalTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  function fmtResetMoment(resetMs, nowMs = Date.now()) {
+    const localTime = fmtLocalTime(resetMs);
+    if (!localTime) return "unknown";
+    return `${fmtDuration((resetMs - nowMs) / 1000)} at ${localTime}`;
+  }
+
   function fmtResetAt(value) {
     if (!value) return "unknown";
     const resetMs = new Date(value).getTime();
-    return Number.isNaN(resetMs) ? "unknown" : fmtDuration((resetMs - Date.now()) / 1000);
+    return Number.isNaN(resetMs) ? "unknown" : fmtResetMoment(resetMs);
   }
 
   function fmtCodexReset(window) {
@@ -47,9 +61,12 @@
       const resetMs = Number.isFinite(numeric)
         ? numeric * 1000
         : new Date(window.reset_at).getTime();
-      if (!Number.isNaN(resetMs)) return fmtDuration((resetMs - Date.now()) / 1000);
+      if (!Number.isNaN(resetMs)) return fmtResetMoment(resetMs);
     }
-    return fmtDuration(window.reset_after_seconds);
+    const resetAfterSeconds = Number(window.reset_after_seconds);
+    if (!Number.isFinite(resetAfterSeconds)) return "unknown";
+    const nowMs = Date.now();
+    return fmtResetMoment(nowMs + resetAfterSeconds * 1000, nowMs);
   }
 
   function moneyNumber(value, numericExponent = 0) {
