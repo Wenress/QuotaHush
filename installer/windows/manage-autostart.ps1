@@ -12,7 +12,8 @@ $StartupShortcut = Join-Path ([Environment]::GetFolderPath("Startup")) "QuotaHus
 $ResolvedExecutable = [IO.Path]::GetFullPath($ExecutablePath)
 $InstallDirectory = Split-Path -Parent $ResolvedExecutable
 $WatchdogPath = Join-Path $InstallDirectory "watchdog.ps1"
-$PowerShellExecutable = Join-Path $PSHOME "powershell.exe"
+$PowerShellExecutable = Join-Path $env:SystemRoot `
+    "System32\WindowsPowerShell\v1.0\powershell.exe"
 $DataDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
 $StopPath = Join-Path $DataDirectory "watchdog.stop"
 $WatchdogArguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + `

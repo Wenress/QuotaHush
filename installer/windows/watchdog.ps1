@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory)]
     [string]$ExecutablePath,
+    [string]$ExecutableArguments = "",
+    [string]$MutexName = "Local\QuotaHushCompanionWatchdog",
     [ValidateRange(1, 60)]
     [int]$InitialRestartDelaySeconds = 2,
     [ValidateRange(5, 300)]
@@ -16,8 +18,9 @@ $DataDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
 $LogDirectory = Join-Path $DataDirectory "logs"
 $LogPath = Join-Path $LogDirectory "watchdog.log"
 $RuntimePath = Join-Path $DataDirectory "watchdog.json"
+$ServerRuntimePath = Join-Path $DataDirectory "server.json"
 $StopPath = Join-Path $DataDirectory "watchdog.stop"
-$Mutex = [Threading.Mutex]::new($false, "Local\QuotaHushCompanionWatchdog")
+$Mutex = [Threading.Mutex]::new($false, $MutexName)
 $HasMutex = $false
 $CurrentProcessId = $PID
 
@@ -61,6 +64,38 @@ function Remove-OwnRuntime {
     } catch {}
 }
 
+function Get-ServerProcess {
+    try {
+        if (-not (Test-Path -LiteralPath $ServerRuntimePath -PathType Leaf)) {
+            return $null
+        }
+        $Runtime = Get-Content -LiteralPath $ServerRuntimePath -Raw | ConvertFrom-Json
+        $ServerProcess = Get-Process -Id ([int]$Runtime.pid) -ErrorAction Stop
+        if (-not $ServerProcess.Path) { return $null }
+        if ([IO.Path]::GetFullPath($ServerProcess.Path) -ne $ResolvedExecutable) {
+            return $null
+        }
+        return $ServerProcess
+    } catch {
+        return $null
+    }
+}
+
+function Stop-ManagedProcess {
+    param(
+        [Diagnostics.Process]$ServerProcess,
+        [Diagnostics.Process]$LauncherProcess
+    )
+    foreach ($ManagedProcess in @($ServerProcess, $LauncherProcess)) {
+        if ($null -eq $ManagedProcess) { continue }
+        try {
+            if (-not $ManagedProcess.HasExited) {
+                Stop-Process -Id $ManagedProcess.Id -Force -ErrorAction SilentlyContinue
+            }
+        } catch {}
+    }
+}
+
 try {
     try {
         $HasMutex = $Mutex.WaitOne(0)
@@ -81,14 +116,60 @@ try {
 
         $StartedAt = [DateTime]::UtcNow
         $ExitCode = $null
+        $Launcher = $null
+        $Child = Get-ServerProcess
         try {
-            $Child = Start-Process -FilePath $ResolvedExecutable `
-                -WorkingDirectory $WorkingDirectory -PassThru
+            if ($null -eq $Child) {
+                $StartParameters = @{
+                    FilePath = $ResolvedExecutable
+                    WorkingDirectory = $WorkingDirectory
+                    PassThru = $true
+                }
+                if ($ExecutableArguments) {
+                    $StartParameters.ArgumentList = $ExecutableArguments
+                }
+                $Launcher = Start-Process @StartParameters
+                $Child = $Launcher
+
+                # A PyInstaller one-file executable starts a bootstrap process and
+                # then an application process. The application publishes its PID
+                # in server.json; supervise that PID so a dead bootstrap cannot
+                # orphan a live server or cause duplicate launches.
+                for ($Attempt = 0; $Attempt -lt 300; $Attempt++) {
+                    if (Test-Path -LiteralPath $StopPath) { break }
+                    $ServerProcess = Get-ServerProcess
+                    if ($null -ne $ServerProcess) {
+                        $Child = $ServerProcess
+                        break
+                    }
+                    if ($Launcher.HasExited) { break }
+                    Start-Sleep -Milliseconds 100
+                }
+            } else {
+                Write-WatchdogLog "adopted existing companion pid=$($Child.Id)"
+            }
+
             Write-WatchdogRuntime -ChildProcessId $Child.Id
-            $Child.WaitForExit()
-            $ExitCode = $Child.ExitCode
+            while (-not $Child.HasExited -and -not (Test-Path -LiteralPath $StopPath)) {
+                Start-Sleep -Milliseconds 250
+            }
+            if (Test-Path -LiteralPath $StopPath) {
+                Stop-ManagedProcess -ServerProcess $Child -LauncherProcess $Launcher
+            }
+            if (-not $Child.HasExited) {
+                $Child.WaitForExit(5000) | Out-Null
+            }
+            if ($Child.HasExited) { $ExitCode = $Child.ExitCode }
+
+            if ($null -ne $Launcher -and $Launcher.Id -ne $Child.Id -and
+                -not $Launcher.HasExited) {
+                if (-not $Launcher.WaitForExit(5000)) {
+                    Stop-ManagedProcess -LauncherProcess $Launcher
+                }
+            }
         } catch {
             Write-WatchdogLog "failed to start or monitor companion: $($_.Exception.Message)"
+            Stop-ManagedProcess -ServerProcess $Child -LauncherProcess $Launcher
         }
         Write-WatchdogRuntime
 

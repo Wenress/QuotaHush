@@ -10,9 +10,23 @@ try {
     $env:LOCALAPPDATA = $TestRoot
     $Watchdog = (Resolve-Path `
         (Join-Path $PSScriptRoot "..\installer\windows\watchdog.ps1")).Path
-    $DummyExecutable = (Get-Command where.exe).Source
+    $DummyExecutable = (Get-Command powershell.exe).Source
+    $DummyCommand = @'
+$DataDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
+$RuntimePath = Join-Path $DataDirectory "server.json"
+New-Item -ItemType Directory -Path $DataDirectory -Force | Out-Null
+@{ pid = $PID; server_dir = $PSScriptRoot } | ConvertTo-Json -Compress |
+    Set-Content -LiteralPath $RuntimePath -Encoding UTF8
+Start-Sleep -Milliseconds 750
+'@
+    $EncodedCommand = [Convert]::ToBase64String(
+        [Text.Encoding]::Unicode.GetBytes($DummyCommand))
+    $DummyArguments = "-NoProfile -EncodedCommand $EncodedCommand"
+    $TestMutex = "Local\QuotaHushCompanionWatchdogTest" + [guid]::NewGuid().ToString("N")
     $Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $Watchdog + `
         '" -ExecutablePath "' + $DummyExecutable + `
+        '" -ExecutableArguments "' + $DummyArguments + `
+        '" -MutexName "' + $TestMutex + `
         '" -InitialRestartDelaySeconds 1 -MaximumRestartDelaySeconds 5 -StableRunSeconds 10'
 
     $Supervisor = Start-Process -FilePath (Get-Command powershell.exe).Source `
