@@ -62,6 +62,7 @@ jobs:
           Copy-Item installer/windows/install.ps1 $Stage/
           Copy-Item installer/windows/uninstall.ps1 $Stage/
           Copy-Item installer/windows/manage-autostart.ps1 $Stage/
+          Copy-Item installer/windows/watchdog.ps1 $Stage/
           Copy-Item installer/windows/update-windows.ps1 $Stage/
           Copy-Item .var.env.example $Stage/
           Copy-Item LICENSE $Stage/

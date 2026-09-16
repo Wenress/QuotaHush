@@ -58,7 +58,8 @@ QuotaHush brings a lightweight AI-usage monitoring experience to Windows and Lin
 - a lightweight local server with no third-party Python runtime dependencies;
 - caching and backoff to avoid excessive upstream requests;
 - automatic startup through Windows Task Scheduler (with standard per-user
-  startup fallbacks) or Linux `systemd --user`;
+  startup fallbacks) or Linux `systemd --user`, plus automatic restart after an
+  unexpected Companion exit;
 - installation with standard Python; `uv` is supported but optional.
 
 ## How it works
@@ -407,7 +408,8 @@ Then remove QuotaHush from the browser extensions page and the VS Code Extension
 - on Windows, run `Get-ScheduledTask QuotaHushServer`; on managed accounts
   where Task Scheduler registration is denied, inspect the `QuotaHush Companion`
   value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` and the
-  current user's Startup folder;
+  current user's Startup folder. The Windows supervisor log is stored at
+  `%LOCALAPPDATA%\QuotaHush\logs\watchdog.log`;
 - on Linux, run `systemctl --user status quotahush-server`;
 - make sure another application is not already using port `8765`.
 

@@ -50,12 +50,12 @@ Source: "{#RepositoryRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RepositoryRoot}\PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "manage-process.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "manage-autostart.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "watchdog.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "update-windows.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "verify-health.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Run]
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-autostart.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"""; Flags: runhidden waituntilterminated
-Filename: "{app}\quotahush-server.exe"; WorkingDir: "{app}"; Flags: runhidden nowait; AfterInstall: VerifyCompanion
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\manage-autostart.ps1"" -ExecutablePath ""{app}\quotahush-server.exe"""; Flags: runhidden waituntilterminated; AfterInstall: VerifyCompanion
 Filename: "{sys}\notepad.exe"; Parameters: """{localappdata}\QuotaHush\.var.env"""; Description: "Configure optional DeepSeek and Z.AI API keys"; Flags: postinstall skipifsilent unchecked
 
 [UninstallRun]
@@ -67,6 +67,8 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
+  ForceDirectories(ExpandConstant('{localappdata}\QuotaHush'));
+  SaveStringToFile(ExpandConstant('{localappdata}\QuotaHush\watchdog.stop'), 'stop', False);
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM "quotahush-server.exe"', '', SW_HIDE,
     ewWaitUntilTerminated, ResultCode);
   Result := '';

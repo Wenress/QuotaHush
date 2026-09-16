@@ -49,3 +49,11 @@ jobs:
             }
           }
           if ($Failed) { exit 1 }
+
+  windows-watchdog:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Windows Companion watchdog
+        shell: powershell
+        run: .\tests-windows\watchdog.test.ps1

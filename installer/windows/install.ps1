@@ -10,16 +10,20 @@ $InstallDirectory = Join-Path $env:LOCALAPPDATA "Programs\QuotaHush"
 $InstallExecutable = Join-Path $InstallDirectory "quotahush-server.exe"
 $ConfigDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
 $ConfigFile = Join-Path $ConfigDirectory ".var.env"
+$WatchdogStopFile = Join-Path $ConfigDirectory "watchdog.stop"
+
+New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
+New-Item -ItemType Directory -Path $ConfigDirectory -Force | Out-Null
+Set-Content -LiteralPath $WatchdogStopFile -Value "stop" -Encoding ASCII
 
 Get-Process -Name "quotahush-server" -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -and [IO.Path]::GetFullPath($_.Path) -eq [IO.Path]::GetFullPath($InstallExecutable) } |
     Stop-Process -Force
 
-New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
-New-Item -ItemType Directory -Path $ConfigDirectory -Force | Out-Null
 Copy-Item -LiteralPath $SourceExecutable -Destination $InstallExecutable -Force
 Copy-Item -LiteralPath (Join-Path $SourceDirectory "uninstall.ps1") -Destination (Join-Path $InstallDirectory "uninstall.ps1") -Force
 Copy-Item -LiteralPath (Join-Path $SourceDirectory "manage-autostart.ps1") -Destination (Join-Path $InstallDirectory "manage-autostart.ps1") -Force
+Copy-Item -LiteralPath (Join-Path $SourceDirectory "watchdog.ps1") -Destination (Join-Path $InstallDirectory "watchdog.ps1") -Force
 Copy-Item -LiteralPath (Join-Path $SourceDirectory "update-windows.ps1") -Destination (Join-Path $InstallDirectory "update-windows.ps1") -Force
 
 if (-not (Test-Path -LiteralPath $ConfigFile)) {
@@ -27,7 +31,6 @@ if (-not (Test-Path -LiteralPath $ConfigFile)) {
 }
 
 & (Join-Path $InstallDirectory "manage-autostart.ps1") -ExecutablePath $InstallExecutable
-Start-Process -FilePath $InstallExecutable -WorkingDirectory $InstallDirectory
 
 $Healthy = $false
 for ($Attempt = 0; $Attempt -lt 20; $Attempt++) {
