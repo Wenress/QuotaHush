@@ -7,6 +7,11 @@ on:
         description: GitHub release tag to publish
         required: true
         type: string
+      chrome_validate_only:
+        description: Validate Chrome Web Store credentials without publishing
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -19,7 +24,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      CWS_EXTENSION_ID: blnenpfhgimefpbabmcdaknfimcdgmnj
+      CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -36,7 +45,8 @@ jobs:
           test "$(jq -r '.isDraft' <<< "$release_data")" = "false"
           test "$(jq -r '.isPrerelease' <<< "$release_data")" = "false"
 
-      - name: Download released VSIX
+      - name: Download released client packages
+        if: inputs.chrome_validate_only != true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -46,20 +56,28 @@ jobs:
           gh release download "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --pattern "quotahush-vscode-*.vsix" \
+            --pattern "quotahush-chromium-*.zip" \
             --dir build
-          mapfile -t files < <(find build -maxdepth 1 -type f -name '*.vsix')
-          test "${#files[@]}" -eq 1
-          echo "VSIX=${files[0]}" >> "$GITHUB_ENV"
+          mapfile -t vsix_files < <(find build -maxdepth 1 -type f -name '*.vsix')
+          mapfile -t chromium_files < <(find build -maxdepth 1 -type f -name 'quotahush-chromium-*.zip')
+          test "${#vsix_files[@]}" -eq 1
+          test "${#chromium_files[@]}" -eq 1
+          echo "VSIX=${vsix_files[0]}" >> "$GITHUB_ENV"
+          echo "CHROMIUM_ZIP=${chromium_files[0]}" >> "$GITHUB_ENV"
 
-      - name: Verify tag matches VSIX version
+      - name: Verify tag matches client versions
+        if: inputs.chrome_validate_only != true
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           package_version="$(unzip -p "$VSIX" extension/package.json | jq -r '.version')"
+          chromium_version="$(unzip -p "$CHROMIUM_ZIP" manifest.json | jq -r '.version')"
           test "v$package_version" = "$RELEASE_TAG"
+          test "v$chromium_version" = "$RELEASE_TAG"
 
       - name: Publish to Open VSX when configured
+        if: inputs.chrome_validate_only != true
         shell: bash
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
@@ -71,6 +89,7 @@ jobs:
           npx --yes ovsx@1.2.0 publish "$VSIX" --pat "$OVSX_PAT" --skip-duplicate
 
       - name: Publish to Visual Studio Marketplace when configured
+        if: inputs.chrome_validate_only != true
         shell: bash
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -80,3 +99,83 @@ jobs:
             exit 0
           fi
           npx --yes @vscode/vsce@3.9.2 publish --packagePath "$VSIX" --pat "$VSCE_PAT" --skip-duplicate
+
+      - name: Check Chrome Web Store configuration
+        id: cws-config
+        shell: bash
+        env:
+          CWS_SERVICE_ACCOUNT_JSON: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [[ -n "$CWS_SERVICE_ACCOUNT_JSON" && -n "$CWS_PUBLISHER_ID" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Chrome Web Store skipped: CWS_SERVICE_ACCOUNT_JSON or CWS_PUBLISHER_ID is not configured." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Authenticate to Chrome Web Store when configured
+        if: steps.cws-config.outputs.configured == 'true'
+        id: cws-auth
+        shell: bash
+        env:
+          CWS_SERVICE_ACCOUNT_JSON: ${{ secrets.CWS_SERVICE_ACCOUNT_JSON }}
+        run: node .github/scripts/google-service-account-token.mjs
+
+      - name: Publish to Chrome Web Store when configured
+        if: steps.cws-config.outputs.configured == 'true' && inputs.chrome_validate_only != true
+        shell: bash
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.cws-auth.outputs.access_token }}
+        run: |
+          item="publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID"
+          upload_url="https://chromewebstore.googleapis.com/upload/v2/$item:upload"
+          status_url="https://chromewebstore.googleapis.com/v2/$item:fetchStatus"
+          publish_url="https://chromewebstore.googleapis.com/v2/$item:publish"
+
+          upload_response="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CWS_ACCESS_TOKEN" \
+            -H "Content-Type: application/zip" \
+            -X POST --data-binary "@$CHROMIUM_ZIP" "$upload_url")"
+          upload_state="$(jq -r '.uploadState // empty' <<< "$upload_response")"
+
+          for attempt in {1..12}; do
+            if [[ "$upload_state" == "SUCCEEDED" ]]; then
+              break
+            fi
+            if [[ "$upload_state" != "IN_PROGRESS" && "$upload_state" != "UPLOAD_IN_PROGRESS" ]]; then
+              echo "$upload_response" | jq .
+              echo "Chrome Web Store upload failed with state: ${upload_state:-unknown}" >&2
+              exit 1
+            fi
+            sleep 5
+            upload_response="$(curl --fail-with-body --silent --show-error \
+              -H "Authorization: Bearer $CWS_ACCESS_TOKEN" "$status_url")"
+            upload_state="$(jq -r '.lastAsyncUploadState // empty' <<< "$upload_response")"
+          done
+
+          if [[ "$upload_state" != "SUCCEEDED" ]]; then
+            echo "Chrome Web Store upload did not finish before the workflow timeout." >&2
+            exit 1
+          fi
+
+          publish_response="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CWS_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -X POST -d '{"publishType":"DEFAULT_PUBLISH"}' "$publish_url")"
+          publish_state="$(jq -r '.state // empty' <<< "$publish_response")"
+          echo "Chrome Web Store submission state: ${publish_state:-submitted}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate Chrome Web Store access
+        if: steps.cws-config.outputs.configured == 'true' && inputs.chrome_validate_only == true
+        shell: bash
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.cws-auth.outputs.access_token }}
+        run: |
+          item="publishers/$CWS_PUBLISHER_ID/items/$CWS_EXTENSION_ID"
+          status_url="https://chromewebstore.googleapis.com/v2/$item:fetchStatus"
+          status_response="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CWS_ACCESS_TOKEN" "$status_url")"
+          returned_item="$(jq -r '.itemId // empty' <<< "$status_response")"
+          test "$returned_item" = "$CWS_EXTENSION_ID"
+          published_version="$(jq -r '.publishedItemRevisionStatus.distributionChannels[0].crxVersion // "unknown"' <<< "$status_response")"
+          echo "Chrome Web Store credentials validated for $returned_item (published version: $published_version)." | tee -a "$GITHUB_STEP_SUMMARY"

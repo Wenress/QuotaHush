@@ -8,7 +8,7 @@ A lightweight, local usage monitor for **Claude Code**, **OpenAI Codex**, **Deep
 > [!IMPORTANT]
 > QuotaHush is an independent, unofficial project. It is not affiliated with or endorsed by Anthropic, OpenAI, Z.AI, or the project acknowledged above.
 
-[Website](https://wenress.github.io/QuotaHush/) · [Verify downloads](VERIFYING_RELEASES.md) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
+[Website](https://wenress.github.io/QuotaHush/) · [Chrome Web Store](https://chromewebstore.google.com/detail/quotahush/blnenpfhgimefpbabmcdaknfimcdgmnj) · [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=wenress.quotahush-local) · [Verify downloads](VERIFYING_RELEASES.md) · [Privacy](https://wenress.github.io/QuotaHush/privacy.html) · [Support](SUPPORT.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 ## Quick start
 
@@ -36,8 +36,9 @@ usage data, and one or both client extensions, which display it.
    [http://127.0.0.1:8765/health](http://127.0.0.1:8765/health) reports a
    healthy QuotaHush Companion.
 
-4. Install the Chromium or VS Code extension from the same release. Until the
-   marketplace versions are available, follow the client instructions below.
+4. Install the browser extension from the
+   [Chrome Web Store](https://chromewebstore.google.com/detail/quotahush/blnenpfhgimefpbabmcdaknfimcdgmnj),
+   or install the editor extension from the VS Code Marketplace or Open VSX.
 
 5. Open the extension. Enabled providers appear automatically; a provider that
    has not been configured does not prevent the others from working.
@@ -271,9 +272,15 @@ Example response:
 
 ## Install the browser extension
 
-Download `quotahush-chromium-<version>.zip` from the
-[latest release](https://github.com/Wenress/QuotaHush/releases/latest) and
-extract it to a permanent directory. Then:
+Install [QuotaHush from the Chrome Web Store](https://chromewebstore.google.com/detail/quotahush/blnenpfhgimefpbabmcdaknfimcdgmnj),
+then pin it to the browser toolbar for quick access. Store installations receive
+browser-extension updates automatically. Chrome, Edge, Brave, and other
+Chromium-based browsers that support Chrome Web Store extensions are supported.
+
+For development or manual installation, download
+`quotahush-chromium-<version>.zip` from the
+[latest release](https://github.com/Wenress/QuotaHush/releases/latest), extract
+it to a permanent directory, and then:
 
 1. Open the browser's extensions page:
    - Chrome/Brave: `chrome://extensions`;
