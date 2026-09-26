@@ -34,6 +34,7 @@ class TTLCache:
         self._cooldown_until = 0.0
         self._consecutive_rate_limits = 0
         self._fetching = False
+        self._source_key: object = None
         self._load_success()
 
     def _load_success(self) -> None:
@@ -79,18 +80,53 @@ class TTLCache:
         if not self._include_metadata or result is not self._last_success:
             return result
         presented = dict(result)
-        presented["_cache"] = {
+        metadata = {
             "fetched_at": datetime.fromtimestamp(
                 self._success_saved_at, tz=timezone.utc
             ).isoformat(),
             "stale": stale,
         }
+        # Expose why fresh data is unavailable; the stale fallback otherwise
+        # hides the upstream failure from both the clients and the log.
+        failure = self._last_attempt
+        if stale and failure is not None and failure.get("error"):
+            metadata["error"] = failure.get("error")
+            metadata["message"] = failure.get("message")
+            cooldown = self._cooldown_until - time.monotonic()
+            if cooldown > 0:
+                metadata["retry_after"] = int(cooldown)
+        presented["_cache"] = metadata
         return presented
 
-    def get(self, fetch: Callable[[], dict]) -> dict:
+    def _source_changed(self, source_key: Callable[[], object] | None) -> bool:
+        """Whether the inputs (e.g. credentials) changed since the last failure.
+
+        A 429 cooldown or a failed attempt belongs to the credentials that
+        produced it; once the CLI rotates its token the new one deserves an
+        immediate attempt instead of waiting out the old backoff.
+        """
+        if source_key is None or self._last_attempt is None:
+            return False
+        if self._last_attempt is self._last_success and self._cooldown_until <= 0:
+            return False
+        try:
+            current = source_key()
+        except Exception:
+            return False
+        return current != self._source_key
+
+    def get(
+        self,
+        fetch: Callable[[], dict],
+        source_key: Callable[[], object] | None = None,
+    ) -> dict:
         with self._condition:
             while True:
                 now = time.monotonic()
+                if not self._fetching and self._source_changed(source_key):
+                    self._attempted_at = 0.0
+                    self._cooldown_until = 0.0
+                    self._consecutive_rate_limits = 0
                 if self._last_attempt is not None and now < self._attempted_at + self._ttl:
                     result = self._last_success or self._last_attempt
                     stale = self._last_success is not None and self._last_attempt is not self._last_success
@@ -116,7 +152,14 @@ class TTLCache:
             raise
 
         attempted_at = time.monotonic()
+        try:
+            # Read after fetching so the provider's own token refresh does not
+            # look like an external credential change.
+            fetched_source_key = source_key() if source_key is not None else None
+        except Exception:
+            fetched_source_key = None
         with self._condition:
+            self._source_key = fetched_source_key
             is_not_configured = result.get("error") == "not_configured"
             if is_not_configured:
                 # Configuration is a local file edit, so do not make users wait

@@ -108,5 +108,71 @@ class TTLCacheTests(unittest.TestCase):
             self.assertTrue(stale["_cache"]["stale"])
 
 
+    def test_retries_immediately_when_source_changes_during_cooldown(self):
+        cache = TTLCache(ttl_seconds=10, default_backoff_seconds=300)
+        source = "token-a"
+        responses = iter(
+            [
+                {"value": 1},
+                {"error": "http_error", "message": "429 Too Many Requests"},
+                {"value": 2},
+            ]
+        )
+
+        def fetch():
+            return next(responses)
+
+        with patch("quotahush_server.providers._cache.time.monotonic") as clock:
+            clock.return_value = 0
+            self.assertEqual(cache.get(fetch, source_key=lambda: source), {"value": 1})
+            clock.return_value = 11
+            self.assertEqual(cache.get(fetch, source_key=lambda: source), {"value": 1})
+            clock.return_value = 30
+            self.assertEqual(
+                cache.get(lambda: self.fail("must not fetch during cooldown"), source_key=lambda: source),
+                {"value": 1},
+            )
+            source = "token-b"
+            self.assertEqual(cache.get(fetch, source_key=lambda: source), {"value": 2})
+
+    def test_unchanged_source_does_not_bypass_ttl_after_success(self):
+        cache = TTLCache(ttl_seconds=300)
+        calls = 0
+
+        def fetch():
+            nonlocal calls
+            calls += 1
+            return {"value": calls}
+
+        self.assertEqual(cache.get(fetch, source_key=lambda: "token"), {"value": 1})
+        self.assertEqual(cache.get(fetch, source_key=lambda: "rotated"), {"value": 1})
+        self.assertEqual(calls, 1)
+
+    def test_stale_fallback_reports_underlying_failure(self):
+        with TemporaryDirectory() as temporary_directory:
+            cache = TTLCache(
+                ttl_seconds=10,
+                default_backoff_seconds=300,
+                storage_path=Path(temporary_directory) / "usage.json",
+                include_metadata=True,
+            )
+            responses = iter(
+                [
+                    {"value": 42},
+                    {"error": "http_error", "message": "429 Too Many Requests"},
+                ]
+            )
+            with patch("quotahush_server.providers._cache.time.monotonic") as clock:
+                clock.return_value = 0
+                cache.get(lambda: next(responses))
+                clock.return_value = 11
+                stale = cache.get(lambda: next(responses))
+
+        self.assertTrue(stale["_cache"]["stale"])
+        self.assertEqual(stale["_cache"]["error"], "http_error")
+        self.assertEqual(stale["_cache"]["message"], "429 Too Many Requests")
+        self.assertEqual(stale["_cache"]["retry_after"], 300)
+
+
 if __name__ == "__main__":
     unittest.main()

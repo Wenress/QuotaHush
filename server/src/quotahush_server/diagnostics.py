@@ -59,9 +59,11 @@ def _safe_log_text(value: object) -> str:
 
 def _log_provider_result(provider: str, result: dict) -> None:
     error = result.get("error")
-    stale = bool((result.get("_cache") or {}).get("stale"))
+    cache = result.get("_cache") or {}
+    stale = bool(cache.get("stale"))
     message = _safe_log_text(result.get("message", ""))[:200]
-    status = (error, stale, message, result.get("retry_after"))
+    cause = _safe_log_text(cache.get("message") or cache.get("error") or "")[:200]
+    status = (error, stale, message, result.get("retry_after"), cause)
     with _provider_status_lock:
         if _provider_status.get(provider) == status:
             return
@@ -77,7 +79,11 @@ def _log_provider_result(provider: str, result: dict) -> None:
             result.get("retry_after"),
         )
     elif stale:
-        _logger.warning("%s provider is serving persisted cached data", provider)
+        _logger.warning(
+            "%s provider is serving persisted cached data cause=%s",
+            provider,
+            cause or "-",
+        )
     elif previous is not None:
         _logger.info("%s provider recovered", provider)
     else:

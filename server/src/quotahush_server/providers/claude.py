@@ -170,5 +170,13 @@ def _fetch_fresh() -> dict:
         return {"error": "network_error", "message": str(exc)}
 
 
+def _credentials_fingerprint() -> tuple[int, int] | None:
+    try:
+        stat = _credentials_path().stat()
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
 def get_usage() -> dict:
-    return _cache.get(_fetch_fresh)
+    return _cache.get(_fetch_fresh, source_key=_credentials_fingerprint)
