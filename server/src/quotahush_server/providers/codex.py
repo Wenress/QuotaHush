@@ -15,6 +15,7 @@ from quotahush_server.providers._http import (
 )
 
 USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
 TOKEN_URL = "https://auth.openai.com/oauth/token"
 CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
@@ -92,14 +93,28 @@ def _load_auth() -> dict:
 
 
 def _call_usage(access_token: str, account_id: str) -> dict:
-    return request_json(
-        USAGE_URL,
-        headers={
-            "Authorization": f"Bearer {access_token}",
-            "chatgpt-account-id": account_id,
-            "User-Agent": "codex-cli",
-        },
-    )
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "chatgpt-account-id": account_id,
+        "User-Agent": "codex-cli",
+    }
+    result = request_json(USAGE_URL, headers=headers)
+    summary = result.get("rate_limit_reset_credits")
+    if not isinstance(summary, dict):
+        summary = {}
+    if summary.get("available_count") == 0:
+        result["rate_limit_reset_credits"] = {**summary, "credits": []}
+        return result
+    # The usage endpoint exposes only a count. This read-only endpoint supplies
+    # each reset's expiry; failure must not hide otherwise valid usage data.
+    try:
+        details = request_json(RESET_CREDITS_URL, headers=headers, timeout=5)
+        if not isinstance(details, dict) or not isinstance(details.get("credits"), list):
+            raise ValueError("Invalid reset credit details")
+        result["rate_limit_reset_credits"] = {**summary, **details}
+    except (urllib.error.URLError, OSError, ValueError):
+        result["rate_limit_reset_credits"] = {**summary, "details_unavailable": True}
+    return result
 
 
 def _refresh(refresh_token: str) -> dict:

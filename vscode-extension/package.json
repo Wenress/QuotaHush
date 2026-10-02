@@ -2,7 +2,7 @@
   "name": "quotahush-local",
   "displayName": "QuotaHush",
   "description": "Shows Claude Code, Codex, DeepSeek, and Z.AI usage in the status bar through the QuotaHush local server.",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "wenress",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -59,7 +59,11 @@
       "properties": {
         "quotahush.providers.claude": {
           "type": "string",
-          "enum": ["auto", "enabled", "disabled"],
+          "enum": [
+            "auto",
+            "enabled",
+            "disabled"
+          ],
           "enumDescriptions": [
             "Show Claude when QuotaHush detects a local Claude login.",
             "Always show Claude, including authentication errors.",
@@ -70,7 +74,11 @@
         },
         "quotahush.providers.codex": {
           "type": "string",
-          "enum": ["auto", "enabled", "disabled"],
+          "enum": [
+            "auto",
+            "enabled",
+            "disabled"
+          ],
           "enumDescriptions": [
             "Show Codex when QuotaHush detects a local Codex login.",
             "Always show Codex, including authentication errors.",
@@ -81,7 +89,11 @@
         },
         "quotahush.providers.deepseek": {
           "type": "string",
-          "enum": ["auto", "enabled", "disabled"],
+          "enum": [
+            "auto",
+            "enabled",
+            "disabled"
+          ],
           "enumDescriptions": [
             "Show DeepSeek when its API credentials are configured.",
             "Always show DeepSeek, including configuration errors.",
@@ -92,7 +104,11 @@
         },
         "quotahush.providers.zai": {
           "type": "string",
-          "enum": ["auto", "enabled", "disabled"],
+          "enum": [
+            "auto",
+            "enabled",
+            "disabled"
+          ],
           "enumDescriptions": [
             "Show Z.AI when its API credentials are configured.",
             "Always show Z.AI, including configuration errors.",

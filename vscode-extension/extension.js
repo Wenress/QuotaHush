@@ -24,6 +24,9 @@ const {
   fmtResetAt,
   fmtCodexReset,
   claudeCreditsLine,
+  claudeResetInfo,
+  codexResetInfo,
+  resetInfoMarkdown,
   zaiBundles,
   zaiCurrentBalance,
   zaiUsedPercent,
@@ -122,9 +125,10 @@ function buildClaudeTooltip(claude, fetchedAt) {
   } else {
     markdown.appendMarkdown(`Plan: ${escapeMarkdown(claude.plan_type || "unknown")}\n\n`);
     markdown.appendMarkdown(`Session (5h): **${fmtPercent(claude.five_hour.utilization)}%** — resets in ${fmtResetAt(claude.five_hour.resets_at)}\n\n`);
-    markdown.appendMarkdown(`Weekly: **${fmtPercent(claude.seven_day.utilization)}%** — resets in ${fmtResetAt(claude.seven_day.resets_at)}\n\n`);
+    markdown.appendMarkdown(`Weekly: **${fmtPercent(claude.seven_day.utilization)}%** — resets in ${fmtResetAt(claude.seven_day.resets_at, true)}\n\n`);
     const credits = claudeCreditsLine(claude);
     if (credits) markdown.appendMarkdown(`Credits: ${escapeMarkdown(credits)}\n\n`);
+    markdown.appendMarkdown(resetInfoMarkdown(claudeResetInfo(claude)));
     const age = cacheAge(claude);
     if (age) markdown.appendMarkdown(`_Cached data · ${age} old_\n\n`);
   }
@@ -141,9 +145,10 @@ function buildCodexTooltip(codex, fetchedAt) {
     const { session, weekly } = codexWindows(codex);
     markdown.appendMarkdown(`Plan: ${escapeMarkdown(codex.plan_type || "unknown")}\n\n`);
     if (session) markdown.appendMarkdown(`Session (5h): **${fmtPercent(session.used_percent)}%** — resets in ${fmtCodexReset(session)}\n\n`);
-    if (weekly) markdown.appendMarkdown(`Weekly: **${fmtPercent(weekly.used_percent)}%** — resets in ${fmtCodexReset(weekly)}\n\n`);
+    if (weekly) markdown.appendMarkdown(`Weekly: **${fmtPercent(weekly.used_percent)}%** — resets in ${fmtCodexReset(weekly, true)}\n\n`);
     const credits = codexCreditsLine(codex);
     if (credits) markdown.appendMarkdown(`Credits: ${escapeMarkdown(credits)}\n\n`);
+    markdown.appendMarkdown(resetInfoMarkdown(codexResetInfo(codex)));
   }
   markdown.appendMarkdown(`---\n\nUpdated ${new Date(fetchedAt).toLocaleTimeString()}`);
   return markdown;
@@ -312,11 +317,19 @@ function webviewHtml(contentHtml, metaHtml) {
   .spaced { margin-top: 10px; }
   .label { color: var(--vscode-descriptionForeground); }
   .value { font-variant-numeric: tabular-nums; }
+  .reset-row { gap: 12px; }
+  .reset-row .value { text-align: right; }
+  .available-resets summary { cursor: pointer; font-weight: 600; }
+  .available-resets summary:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
+  .available-resets[open] summary { margin-bottom: 8px; }
+  .reset-entry + .reset-entry { border-top: 1px solid var(--vscode-widget-border, transparent); margin-top: 9px; padding-top: 9px; }
+  .reset-title { font-weight: 600; }
+  .reset-description { margin-top: 5px; font-size: 12px; line-height: 1.4; }
   .credits { margin-top: 10px; padding: 8px 9px; border: 1px solid var(--vscode-widget-border, transparent); border-radius: 6px; background: var(--vscode-sideBarSectionHeader-background, rgba(127, 127, 127, .08)); }
   .credits-title { margin-bottom: 5px; font-weight: 600; }
   .credit-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 3px; }
   .credit-row .value { text-align: right; white-space: nowrap; }
-  .credit-row .value.wrap { white-space: normal; }
+  .credit-row .value.wrap { white-space: normal; overflow-wrap: anywhere; }
   .credit-row.section-gap { margin-top: 8px; }
   .bundle-name { margin: 5px 0; font-size: 11px; color: var(--vscode-descriptionForeground); }
   .bundle-name.section-gap { margin-top: 12px; }

@@ -103,6 +103,94 @@ test("classifies Codex windows by duration", () => {
   assert.equal(windows.weekly, weekly);
 });
 
+test("weekly resets include the local calendar date even with less than a day left", () => {
+  const originalNow = Date.now;
+  Date.now = () => new Date(2026, 9, 2, 19, 0).getTime();
+  try {
+    const weekly = new Date(2026, 9, 5, 12, 0);
+    assert.equal(usage.fmtResetAt(weekly.toISOString(), true), "2d 17h · 5 Oct 2026 at 12:00");
+    assert.equal(usage.fmtCodexReset({ reset_at: weekly.getTime() / 1000 }, true), "2d 17h · 5 Oct 2026 at 12:00");
+    assert.equal(usage.fmtResetAt(new Date(2026, 9, 3, 1, 0).toISOString(), true), "6h 0m · 3 Oct 2026 at 01:00");
+    assert.equal(usage.fmtCodexReset({ reset_after_seconds: 6 * 3600 }, true), "6h 0m · 3 Oct 2026 at 01:00");
+    assert.equal(usage.fmtCodexReset({}), "unknown");
+    assert.equal(usage.fmtCodexReset({ reset_after_seconds: null }), "unknown");
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("formats Codex credits and estimates USD without assuming workspace prices", () => {
+  const codex = { plan_type: "plus", credits: { has_credits: true, balance: "296.4261310000" } };
+  assert.equal(usage.codexCreditsLine(codex), "296.43 credits · $11.86 · 1 credit ≈ $0.04");
+  assert.equal(usage.codexCreditsLine({ ...codex, plan_type: "enterprise" }), "296.43 credits");
+  assert.equal(usage.codexCreditsLine({ credits: { unlimited: true } }), "Unlimited");
+  assert.equal(usage.codexCreditsLine({ credits: { has_credits: false } }), "No credit balance");
+  for (const balance of [undefined, null, "", "invalid", Infinity, {}, true, -1]) {
+    assert.equal(usage.codexCreditsLine({ ...codex, credits: { has_credits: true, balance } }), "Unknown");
+  }
+  assert.match(usage.codexCreditsLine({ ...codex, credits: { balance: "0" } }), /^0 credits · \$0\.00/);
+});
+
+test("shows reset grants, expires old entries, and keeps unknown distinct from zero", () => {
+  const originalNow = Date.now;
+  Date.now = () => new Date(2026, 9, 2, 19, 0).getTime();
+  try {
+    const future = new Date(2026, 9, 22, 21, 15).toISOString();
+    const past = new Date(2026, 8, 22, 21, 15).toISOString();
+    const codex = { rate_limit_reset_credits: {
+      available_count: 3, applicable_available_count: 0,
+      credits: [
+        { status: "available", title: "Full reset (Weekly + 5 hr)", expires_at: future },
+        { status: "available", title: "Expired", expires_at: past },
+        { status: "redeemed", expires_at: future },
+      ],
+    } };
+    assert.equal(usage.codexResetInfo(codex).count, 1);
+    assert.equal(usage.codexResetInfo(codex).applicableCount, 0);
+    assert.equal(usage.codexResetInfo(codex).entries[0].expiresAt, future);
+    assert.equal(usage.codexResetInfo({}).count, null);
+    assert.equal(usage.codexResetInfo({ rate_limit_reset_credits: { available_count: 0 } }).count, 0);
+    const countOnly = usage.codexResetInfo({ rate_limit_reset_credits: { available_count: 2, details_unavailable: true } });
+    assert.equal(countOnly.count, 2);
+    assert.match(countOnly.message, /details.*unavailable/);
+
+    const claude = { cedar_ember: { eligible: true, grants: [
+      { label: "Weekly refill", resets_left: 2, ends_at: future, clears: ["five_hour", "seven_day"], usable_now: true },
+      { resets_left: 1, ends_at: past },
+      { resets_left: 0, ends_at: future },
+    ] } };
+    const info = usage.claudeResetInfo(claude);
+    assert.equal(info.count, 2);
+    assert.equal(info.entries.length, 1);
+    assert.equal(info.entries[0].covers, "Session (5h) + Weekly");
+    assert.equal(usage.claudeResetInfo({ cedar_ember: { eligible: true, grants: [] } }).count, 0);
+    assert.equal(usage.claudeResetInfo({ cedar_ember: null }).count, null);
+    assert.equal(usage.claudeResetInfo({ cedar_ember: { eligible: false, ineligible_reason: "surface", grants: [] } }).count, null);
+    assert.match(usage.resetInfoMarkdown(info), /Available Resets: \*\*2\*\*/);
+    assert.match(usage.resetInfoMarkdown(info), /22 Oct 2026/);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("renders credit value and accessible reset menus with escaped details", () => {
+  const { renderCodexHtml, renderClaudeHtml } = usage.createRenderers({ providerHeading: () => "", cacheNotice: () => "" });
+  const codex = renderCodexHtml({
+    plan_type: "plus", credits: { balance: "296.4261310000" },
+    rate_limit_reset_credits: { available_count: 1, credits: [{ status: "available", title: "<reset>", expires_at: "2099-10-22T19:15:43Z", description: "<script>" }] },
+  });
+  assert.match(codex, /296\.43 credits/);
+  assert.match(codex, /Estimated value \(USD\).*\$11\.86/s);
+  assert.match(codex, /<details.*data-provider="codex">\s*<summary>Available Resets: 1<\/summary>/);
+  assert.match(codex, /Expires.*22 Oct 2099/s);
+  assert.match(codex, /&lt;reset&gt;/);
+  assert.doesNotMatch(codex, /<script>/);
+  const claude = renderClaudeHtml({ five_hour: {}, seven_day: {}, cedar_ember: { eligible: true, grants: [{ label: "Refill", resets_left: 2, ends_at: null, clears: ["seven_day"] }] } });
+  assert.match(claude, /<summary>Available Resets: 2<\/summary>/);
+  assert.match(claude, /Refill × 2/);
+  assert.match(claude, /Expires.*No expiry/s);
+});
+
 test("formats structured Claude credit amounts without NaN", () => {
   const line = usage.claudeCreditsLine({
     extra_usage: {

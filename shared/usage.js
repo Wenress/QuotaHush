@@ -41,31 +41,40 @@
     return `${hours}:${minutes}`;
   }
 
-  function fmtResetMoment(resetMs, nowMs = Date.now()) {
+  function fmtLocalDate(value) {
+    return new Date(value).toLocaleDateString("en-GB", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+  }
+
+  function fmtResetMoment(resetMs, nowMs = Date.now(), includeDate = false) {
     const localTime = fmtLocalTime(resetMs);
     if (!localTime) return "unknown";
-    return `${fmtDuration((resetMs - nowMs) / 1000)} at ${localTime}`;
+    const date = includeDate || resetMs - nowMs >= 86400000
+      ? ` · ${fmtLocalDate(resetMs)}` : "";
+    return `${fmtDuration((resetMs - nowMs) / 1000)}${date} at ${localTime}`;
   }
 
-  function fmtResetAt(value) {
+  function fmtResetAt(value, includeDate = false) {
     if (!value) return "unknown";
     const resetMs = new Date(value).getTime();
-    return Number.isNaN(resetMs) ? "unknown" : fmtResetMoment(resetMs);
+    return Number.isNaN(resetMs) ? "unknown" : fmtResetMoment(resetMs, Date.now(), includeDate);
   }
 
-  function fmtCodexReset(window) {
+  function fmtCodexReset(window, includeDate = false) {
     if (!window) return "unknown";
     if (window.reset_at != null) {
       const numeric = Number(window.reset_at);
       const resetMs = Number.isFinite(numeric)
         ? numeric * 1000
         : new Date(window.reset_at).getTime();
-      if (!Number.isNaN(resetMs)) return fmtResetMoment(resetMs);
+      if (!Number.isNaN(resetMs)) return fmtResetMoment(resetMs, Date.now(), includeDate);
     }
+    if (window.reset_after_seconds == null) return "unknown";
     const resetAfterSeconds = Number(window.reset_after_seconds);
     if (!Number.isFinite(resetAfterSeconds)) return "unknown";
     const nowMs = Date.now();
-    return fmtResetMoment(nowMs + resetAfterSeconds * 1000, nowMs);
+    return fmtResetMoment(nowMs + resetAfterSeconds * 1000, nowMs, includeDate);
   }
 
   function moneyNumber(value, numericExponent = 0) {
@@ -225,12 +234,123 @@
       .join(" · ");
   }
 
+  function finiteAmount(value) {
+    if (value == null || typeof value === "boolean" || typeof value === "object" || String(value).trim() === "") return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 ? amount : null;
+  }
+
+  function codexCreditDetails(codex) {
+    const credits = codex?.credits;
+    if (!credits) return [];
+    if (credits.unlimited) return [{ label: "Balance", value: "Unlimited" }];
+    const balance = finiteAmount(credits.balance);
+    if (balance == null) return [{
+      label: "Balance", value: credits.has_credits === false ? "No credit balance" : "Unknown",
+    }];
+    const details = [{ label: "Balance", value: `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 2,
+    }).format(balance)} credits` }];
+    // Standard personal-plan face value: 2,500 credits = $100.
+    // https://developers.openai.com/community/students
+    // Workspace purchase prices depend on the agreement; do not assume a rate.
+    if (["free", "go", "plus", "pro"].includes(codex.plan_type)) {
+      details.push({ label: "Estimated value (USD)", value: `$${(balance / 25).toFixed(2)}` });
+      details.push({ label: "Standard rate", value: "1 credit ≈ $0.04" });
+    }
+    return details;
+  }
+
   function codexCreditsLine(codex) {
-    const credits = codex.credits;
-    if (!credits) return "";
-    if (credits.unlimited) return "Unlimited";
-    if (!credits.has_credits) return "No credit balance";
-    return `${credits.balance} credits`;
+    return codexCreditDetails(codex).map(({ value }) => value).join(" · ");
+  }
+
+  function resetCount(value) {
+    const count = finiteAmount(value);
+    return Number.isSafeInteger(count) ? count : null;
+  }
+
+  function resetExpiry(value) {
+    if (value == null || value === "") return null;
+    const ms = new Date(value).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  function claudeResetInfo(claude) {
+    const source = claude?.cedar_ember;
+    const unknown = { count: null, entries: [], message: "Reset availability is unavailable here. Check Claude Settings > Usage." };
+    if (!source || !Array.isArray(source.grants)) return unknown;
+    if (!source.eligible && source.ineligible_reason) return unknown;
+    const entries = [];
+    let count = 0;
+    for (const grant of source.grants) {
+      const remaining = resetCount(grant.resets_left);
+      if (remaining == null) return unknown;
+      const expires = resetExpiry(grant.ends_at);
+      const starts = resetExpiry(grant.starts_at);
+      if (!remaining || (expires != null && expires <= Date.now()) || (starts != null && starts > Date.now())) continue;
+      count += remaining;
+      const covers = (Array.isArray(grant.clears) ? grant.clears : [])
+        .map((key) => ({ five_hour: "Session (5h)", seven_day: "Weekly", seven_day_opus: "Weekly Opus", seven_day_sonnet: "Weekly Sonnet", seven_day_overage_included: "Weekly included overage" })[key] || "Other limits")
+        .join(" + ");
+      entries.push({
+        title: grant.label || "Limit reset", count: remaining,
+        expiresAt: grant.ends_at, startsAt: grant.starts_at, covers,
+        status: grant.paused ? "Paused" : grant.usable_now ? "Available now" : "Available when eligible",
+      });
+    }
+    return { count, entries, message: count === 0 ? "No available resets." : null };
+  }
+
+  function codexResetInfo(codex) {
+    const source = codex?.rate_limit_reset_credits;
+    if (!source) return { count: null, entries: [], message: "Reset availability is not provided." };
+    const count = resetCount(source.available_count);
+    const entries = (Array.isArray(source.credits) ? source.credits : [])
+      .filter((credit) => credit.status === "available" &&
+        (resetExpiry(credit.expires_at) == null || resetExpiry(credit.expires_at) > Date.now()))
+      .map((credit) => ({
+        title: credit.title || "Limit reset", count: 1, expiresAt: credit.expires_at,
+        grantedAt: credit.granted_at, description: credit.description,
+        status: credit.is_supported_by_plan === false ? "Not supported by this plan" : "Available",
+      }));
+    const availableCount = Array.isArray(source.credits) ? entries.length : count;
+    return {
+      count: availableCount, entries,
+      applicableCount: resetCount(source.applicable_available_count),
+      message: source.details_unavailable || (!Array.isArray(source.credits) && count !== 0)
+        ? "Reset details are currently unavailable."
+        : availableCount === 0 ? "No available resets." : null,
+    };
+  }
+
+  function resetExpiryLabel(value) {
+    if (value === undefined) return "Unknown";
+    return value === null ? "No expiry" : fmtResetAt(value, true);
+  }
+
+  function resetInfoHtml(info, provider) {
+    return `<details class="credits available-resets" data-provider="${provider}">
+      <summary>Available Resets: ${info.count ?? "—"}</summary>
+      ${info.applicableCount != null ? `<div class="credit-row"><span class="label">Usable now</span><span class="value">${info.applicableCount}</span></div>` : ""}
+      ${info.entries.map((entry) => `<div class="reset-entry">
+        <div class="reset-title">${escapeHtml(entry.title)}${entry.count > 1 ? ` × ${entry.count}` : ""}</div>
+        ${entry.description ? `<div class="reset-description label">${escapeHtml(entry.description)}</div>` : ""}
+        ${entry.covers ? `<div class="credit-row"><span class="label">Covers</span><span class="value wrap">${escapeHtml(entry.covers)}</span></div>` : ""}
+        <div class="credit-row"><span class="label">Status</span><span class="value wrap">${escapeHtml(entry.status)}</span></div>
+        <div class="credit-row"><span class="label">Expires</span><span class="value wrap">${escapeHtml(resetExpiryLabel(entry.expiresAt))}</span></div>
+        ${entry.grantedAt ? `<div class="credit-row"><span class="label">Granted</span><span class="value wrap">${escapeHtml(fmtDateTime(entry.grantedAt))}</span></div>` : ""}
+      </div>`).join("")}
+      ${info.message ? `<div class="reset-description label">${escapeHtml(info.message)}</div>` : ""}
+    </details>`;
+  }
+
+  function resetInfoMarkdown(info) {
+    const heading = `Available Resets: **${info.count ?? "—"}**\n\n`;
+    const usable = info.applicableCount != null ? `Usable now: ${info.applicableCount}\n\n` : "";
+    return heading + usable + info.entries.map((entry) =>
+      `- ${escapeMarkdown(entry.title)}${entry.count > 1 ? ` × ${entry.count}` : ""} — ${escapeMarkdown(entry.status)}; expires ${escapeMarkdown(resetExpiryLabel(entry.expiresAt))}${entry.covers ? `; ${escapeMarkdown(entry.covers)}` : ""}\n`,
+    ).join("") + (info.message ? `${escapeMarkdown(info.message)}\n` : "") + "\n";
   }
 
   function codexWindows(codex) {
@@ -287,8 +407,9 @@
         <div class="row"><span class="label">Resets</span><span class="value">${fmtResetAt(session.resets_at)}</span></div>
         <div class="row spaced"><span class="label">Weekly</span><span class="value">${fmtPercent(weekly.utilization)}%</span></div>
         ${barHtml(weekly.utilization)}
-        <div class="row"><span class="label">Resets</span><span class="value">${fmtResetAt(weekly.resets_at)}</span></div>
+        <div class="row reset-row"><span class="label">Resets</span><span class="value">${fmtResetAt(weekly.resets_at, true)}</span></div>
         ${creditsHtml}
+        ${resetInfoHtml(claudeResetInfo(claude), "claude")}
       `;
     }
 
@@ -298,7 +419,7 @@
         return `${providerHeading("codex", "Codex")}<div class="error">${escapeHtml(codex.message || codex.error)}</div>`;
       }
       const { session, weekly } = codexWindows(codex);
-      const credits = codexCreditsLine(codex);
+      const credits = codexCreditDetails(codex);
       let html = providerHeading("codex", `Codex (${codex.plan_type || "unknown plan"})`);
       if (session) {
         html += `
@@ -311,12 +432,15 @@
         html += `
           <div class="row spaced"><span class="label">Weekly</span><span class="value">${fmtPercent(weekly.used_percent)}%</span></div>
           ${barHtml(weekly.used_percent)}
-          <div class="row"><span class="label">Resets</span><span class="value">${fmtCodexReset(weekly)}</span></div>
+          <div class="row reset-row"><span class="label">Resets</span><span class="value">${fmtCodexReset(weekly, true)}</span></div>
         `;
       }
-      if (credits) {
-        html += `<div class="row spaced"><span class="label">Credits</span><span class="value">${escapeHtml(credits)}</span></div>`;
+      if (credits.length) {
+        html += `<div class="credits spaced"><div class="credits-title">Credits</div>${credits.map(({ label, value }) =>
+          `<div class="credit-row"><span class="label">${escapeHtml(label)}</span><span class="value wrap">${escapeHtml(value)}</span></div>`,
+        ).join("")}</div>`;
       }
+      html += resetInfoHtml(codexResetInfo(codex), "codex");
       return html;
     }
 
@@ -432,6 +556,10 @@
     claudeCreditDetails,
     claudeCreditsLine,
     codexCreditsLine,
+    codexCreditDetails,
+    claudeResetInfo,
+    codexResetInfo,
+    resetInfoMarkdown,
     codexWindows,
     barHtml,
     createRenderers,

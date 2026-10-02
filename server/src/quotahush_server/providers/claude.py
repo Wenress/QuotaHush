@@ -14,7 +14,13 @@ from quotahush_server.providers._http import (
     retry_after_seconds,
 )
 
-USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+# Opt in to the reset-grant block used by Claude Code's /limit-reset status
+# read. Omitting skip_spend keeps the regular usage and credit fields intact.
+USAGE_URL = "https://api.anthropic.com/api/oauth/usage?cedar_ember=1"
+# Anthropic gates reset grants on both the client surface and CLI version.
+# Keep the compatible usage header aligned with OpenUsage's Claude client:
+# https://github.com/robinebers/openusage/blob/main/Sources/OpenUsage/Providers/Claude/ClaudeUsageClient.swift
+USAGE_USER_AGENT = "claude-cli/2.1.280 (external, cli)"
 TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
 CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 
@@ -59,8 +65,10 @@ def _call_usage(access_token: str) -> dict:
         USAGE_URL,
         headers={
             "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
             "anthropic-beta": "oauth-2025-04-20",
-            "User-Agent": "claude-cli/1.0.0",
+            "User-Agent": USAGE_USER_AGENT,
         },
     )
 

@@ -53,6 +53,10 @@ QuotaHush brings a lightweight AI-usage monitoring experience to Windows and Lin
 - DeepSeek balance plus daily/monthly spend, tokens, and request counts;
 - Z.AI Usage Bundle balance, expiration, and consumed-token percentage;
 - plan, reset-time, and available-credit information;
+- weekly resets with a local calendar date, plus expandable available-reset
+  lists with expiration dates when the provider exposes them;
+- formatted Codex credit balances and an estimated USD value for personal
+  plans at the standard rate of 25 credits per dollar;
 - an extension for Chromium-based browsers;
 - a VS Code extension with status-bar indicators and a dedicated panel;
 - a lightweight local server with no third-party Python runtime dependencies;
@@ -78,6 +82,20 @@ The server exposes only two endpoints:
 The server binds exclusively to `127.0.0.1`, so it is not reachable from other devices on the network. Credentials stay on your computer and are never returned by the local API. They are used only to contact the original provider. If an access token expires, the server can use the CLI refresh token and safely update the corresponding local credentials file.
 
 Claude, DeepSeek, and Z.AI responses are cached for five minutes. Codex uses a shorter cache. When a provider fails temporarily, QuotaHush may show the latest valid result and label it as cached data.
+
+Available resets are separate from the automatic session and weekly resets.
+Codex reset details are read from its reset-credit endpoint; if that read
+fails, the known count remains visible. Claude reset grants are requested
+through its OAuth usage endpoint with compatible Claude Code client headers.
+Outdated or unrecognized client headers can suppress those grants. If Claude
+does not expose them to that
+client, the count is shown as unavailable rather than zero; check Claude
+Settings > Usage. QuotaHush only displays resets and never redeems them.
+
+Codex's USD display is a standard face-value estimate, not the purchase cost
+of the user's credits. Workspace plans do not receive a conversion because
+their prices depend on the agreement. The personal-plan estimate uses the
+[documented 2,500 credits = $100 equivalence](https://developers.openai.com/community/students).
 
 ## Requirements
 

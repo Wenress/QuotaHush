@@ -33,11 +33,16 @@ async function refresh() {
     const response = await fetch(SERVER_URL, { cache: "no-store" });
     if (!response.ok) throw new Error(`server returned ${response.status}`);
     const data = await response.json();
+    const expandedResets = new Set([...content.querySelectorAll("details.available-resets[open]")]
+      .map((details) => details.dataset.provider));
     content.innerHTML =
       renderClaudeHtml(data.claude) +
       renderCodexHtml(data.codex) +
       renderDeepSeekHtml(data.deepseek) +
       renderZaiHtml(data.zai);
+    for (const details of content.querySelectorAll("details.available-resets")) {
+      details.open = expandedResets.has(details.dataset.provider);
+    }
     meta.textContent = "Updated " + new Date(data.fetched_at).toLocaleTimeString();
     ok = true;
   } catch {

@@ -41,6 +41,14 @@
   .spaced { margin-top: 10px; }
   .label { color: #bbb; }
   .value { font-variant-numeric: tabular-nums; }
+  .reset-row { gap: 12px; }
+  .reset-row .value { text-align: right; }
+  .available-resets summary { cursor: pointer; font-weight: 600; }
+  .available-resets summary:focus-visible { outline: 2px solid #4c9aff; outline-offset: 3px; }
+  .available-resets[open] summary { margin-bottom: 8px; }
+  .reset-entry + .reset-entry { border-top: 1px solid #383838; margin-top: 9px; padding-top: 9px; }
+  .reset-title { font-weight: 600; }
+  .reset-description { margin-top: 5px; font-size: 12px; line-height: 1.4; }
   .credits {
     margin-top: 10px;
     padding: 8px 9px;
@@ -63,7 +71,7 @@
     text-align: right;
     white-space: nowrap;
   }
-  .credit-row .value.wrap { white-space: normal; }
+  .credit-row .value.wrap { white-space: normal; overflow-wrap: anywhere; }
   .credit-row.section-gap { margin-top: 8px; }
   .bundle-name { margin: 5px 0; font-size: 11px; color: #999; }
   .bundle-name.section-gap { margin-top: 12px; }
