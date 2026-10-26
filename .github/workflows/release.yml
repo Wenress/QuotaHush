@@ -18,6 +18,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -124,4 +126,18 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run publish-marketplaces.yml --ref main -f tag=$env:GITHUB_REF_NAME
+        run: |
+          # Server-only releases keep the extensions unchanged; do not resubmit them.
+          $Previous = git describe --tags --abbrev=0 --match 'v*' "$env:GITHUB_REF_NAME^" 2>$null
+          $Changed = "true"
+          if ($LASTEXITCODE -eq 0 -and $Previous) {
+            $Changed = (node scripts/extensions-changed.mjs $Previous | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0) { throw "extensions-changed failed with exit code $LASTEXITCODE." }
+          }
+          if ($Changed -ne "true") {
+            "Extension marketplaces skipped: no extension changes since $Previous." | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            exit 0
+          }
+          gh workflow run publish-marketplaces.yml --ref main -f tag=$env:GITHUB_REF_NAME
+          if ($LASTEXITCODE -ne 0) { throw "Could not dispatch the marketplace workflow." }
+          exit 0
