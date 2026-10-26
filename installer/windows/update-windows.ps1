@@ -59,7 +59,11 @@ try {
         "/SUPPRESSMSGBOXES",
         "/NORESTART",
         "/CLOSEAPPLICATIONS"
-    ) -Wait -PassThru
+    ) -PassThru
+    # Start-Process -Wait also waits for descendants, and setup starts the
+    # watchdog and server, so it never returned and held the update mutex.
+    $null = $Setup.Handle
+    $Setup.WaitForExit()
     if ($Setup.ExitCode -ne 0) {
         throw "QuotaHush setup exited with code $($Setup.ExitCode)."
     }
