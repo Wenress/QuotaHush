@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 from pathlib import Path
 
@@ -23,6 +24,7 @@ USAGE_URL = "https://api.anthropic.com/api/oauth/usage?cedar_ember=1"
 USAGE_USER_AGENT = "claude-cli/2.1.280 (external, cli)"
 TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
 CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+EXPIRY_SKEW_SECONDS = 60
 
 
 def _usage_cache_path() -> Path:
@@ -102,6 +104,62 @@ def _retry_with_rotated_credentials(oauth: dict) -> dict | None:
         return None
 
 
+def _is_expired(oauth: dict) -> bool:
+    expires_at = oauth.get("expiresAt")
+    if not isinstance(expires_at, (int, float)) or isinstance(expires_at, bool):
+        return False
+    return expires_at <= (time.time() + EXPIRY_SKEW_SECONDS) * 1000
+
+
+def _rotate_tokens(oauth: dict) -> tuple[dict, dict | None]:
+    """Refresh the OAuth tokens; returns (oauth, None) or (oauth, final result)."""
+    try:
+        refreshed = _refresh(oauth["refreshToken"], oauth.get("scopes"))
+    except urllib.error.HTTPError as exc:
+        raced_result = _retry_with_rotated_credentials(oauth)
+        if raced_result is not None:
+            return oauth, raced_result
+        return oauth, {
+            "error": "refresh_failed",
+            "message": (
+                f"OAuth refresh failed ({exc.code} {exc.reason}). "
+                "Run 'claude auth login'."
+            ),
+        }
+    except urllib.error.URLError as exc:
+        return oauth, {"error": "network_error", "message": str(exc)}
+
+    expected_oauth = {
+        "accessToken": oauth.get("accessToken"),
+        "refreshToken": oauth.get("refreshToken"),
+    }
+    updates = {
+        "accessToken": refreshed.get("access_token", oauth["accessToken"]),
+        "refreshToken": refreshed.get("refresh_token", oauth["refreshToken"]),
+    }
+    if "expires_in" in refreshed:
+        updates["expiresAt"] = int((time.time() + refreshed["expires_in"]) * 1000)
+    oauth, _ = merge_credential_section(
+        _credentials_path(), "claudeAiOauth", expected_oauth, updates
+    )
+    return oauth, None
+
+
+def _request_usage(oauth: dict, plan_type: str | None) -> tuple[dict, bool]:
+    """Returns (result, auth_rejected)."""
+    try:
+        result = _call_usage(oauth["accessToken"])
+        result["plan_type"] = plan_type
+        return result, False
+    except urllib.error.HTTPError as exc:
+        result = {"error": "http_error", "message": f"{exc.code} {exc.reason}"}
+        if exc.code == 429:
+            result["retry_after"] = retry_after_seconds(exc)
+        return result, exc.code in (401, 403)
+    except urllib.error.URLError as exc:
+        return {"error": "network_error", "message": str(exc)}, False
+
+
 def _fetch_fresh() -> dict:
     try:
         creds = _load_credentials()
@@ -115,67 +173,28 @@ def _fetch_fresh() -> dict:
         return {"error": "not_logged_in", "message": "Not logged in. Run 'claude auth login'."}
 
     plan_type = oauth.get("subscriptionType")
+    can_refresh = bool(oauth.get("refreshToken"))
+    refreshed = False
 
-    try:
-        result = _call_usage(oauth["accessToken"])
-        result["plan_type"] = plan_type
+    # An expired token is rejected with 429 as often as 401, and the 429 path
+    # never reaches the refresh below, which left the Companion on cached data
+    # until Claude Code rotated the token itself.
+    if can_refresh and _is_expired(oauth):
+        oauth, final = _rotate_tokens(oauth)
+        if final is not None:
+            return final
+        plan_type = oauth.get("subscriptionType", plan_type)
+        refreshed = True
+
+    result, auth_rejected = _request_usage(oauth, plan_type)
+    if not auth_rejected or refreshed or not can_refresh:
         return result
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            return {
-                "error": "http_error",
-                "message": f"{exc.code} {exc.reason}",
-                "retry_after": retry_after_seconds(exc),
-            }
-        if exc.code not in (401, 403) or not oauth.get("refreshToken"):
-            return {"error": "http_error", "message": f"{exc.code} {exc.reason}"}
-    except urllib.error.URLError as exc:
-        return {"error": "network_error", "message": str(exc)}
 
-    try:
-        refreshed = _refresh(oauth["refreshToken"], oauth.get("scopes"))
-    except urllib.error.HTTPError as exc:
-        raced_result = _retry_with_rotated_credentials(oauth)
-        if raced_result is not None:
-            return raced_result
-        return {
-            "error": "refresh_failed",
-            "message": (
-                f"OAuth refresh failed ({exc.code} {exc.reason}). "
-                "Run 'claude auth login'."
-            ),
-        }
-    except urllib.error.URLError as exc:
-        return {"error": "network_error", "message": str(exc)}
-
-    expected_oauth = {
-        "accessToken": oauth.get("accessToken"),
-        "refreshToken": oauth.get("refreshToken"),
-    }
-    updates = {
-        "accessToken": refreshed.get("access_token", oauth["accessToken"]),
-        "refreshToken": refreshed.get("refresh_token", oauth["refreshToken"]),
-    }
-    if "expires_in" in refreshed:
-        import time
-
-        updates["expiresAt"] = int((time.time() + refreshed["expires_in"]) * 1000)
-    oauth, _ = merge_credential_section(
-        _credentials_path(), "claudeAiOauth", expected_oauth, updates
-    )
+    oauth, final = _rotate_tokens(oauth)
+    if final is not None:
+        return final
     plan_type = oauth.get("subscriptionType", plan_type)
-
-    try:
-        result = _call_usage(oauth["accessToken"])
-        result["plan_type"] = plan_type
-        return result
-    except urllib.error.HTTPError as exc:
-        result = {"error": "http_error", "message": f"{exc.code} {exc.reason}"}
-        if exc.code == 429:
-            result["retry_after"] = retry_after_seconds(exc)
-        return result
-    except urllib.error.URLError as exc:
-        return {"error": "network_error", "message": str(exc)}
+    return _request_usage(oauth, plan_type)[0]
 
 
 def _credentials_fingerprint() -> tuple[int, int] | None:

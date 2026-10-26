@@ -234,5 +234,91 @@ class ClaudeRefreshTests(unittest.TestCase):
         self.assertEqual(result["plan_type"], "pro")
         self.assertEqual(call_usage.call_args_list[-1].args, ("new-access",))
 
+    def test_refreshes_expired_token_before_calling_usage(self):
+        expired = {
+            "claudeAiOauth": {
+                "accessToken": "old-access",
+                "refreshToken": "old-refresh",
+                "expiresAt": 1,
+                "subscriptionType": "pro",
+            }
+        }
+        rotated = {
+            "accessToken": "new-access",
+            "refreshToken": "new-refresh",
+            "subscriptionType": "pro",
+        }
+        with (
+            patch.object(claude, "_load_credentials", return_value=expired),
+            patch.object(claude, "_rotate_tokens", return_value=(rotated, None)) as rotate,
+            patch.object(
+                claude, "_call_usage", return_value={"five_hour": {"utilization": 1}}
+            ) as call_usage,
+        ):
+            result = claude._fetch_fresh()
+
+        rotate.assert_called_once()
+        call_usage.assert_called_once_with("new-access")
+        self.assertNotIn("error", result)
+        self.assertEqual(result["plan_type"], "pro")
+
+    def test_expired_token_is_refreshed_instead_of_sent(self):
+        expired = {
+            "claudeAiOauth": {
+                "accessToken": "old-access",
+                "refreshToken": "old-refresh",
+                "expiresAt": 1,
+            }
+        }
+        rotated = {"accessToken": "new-access", "refreshToken": "new-refresh"}
+        with (
+            patch.object(claude, "_load_credentials", return_value=expired),
+            patch.object(claude, "_rotate_tokens", return_value=(rotated, None)),
+            patch.object(
+                claude, "_call_usage", side_effect=[{"five_hour": {}}]
+            ) as call_usage,
+        ):
+            result = claude._fetch_fresh()
+
+        self.assertNotIn("error", result)
+        self.assertEqual(call_usage.call_args_list[0].args, ("new-access",))
+
+    def test_valid_token_is_not_refreshed_proactively(self):
+        valid = {
+            "claudeAiOauth": {
+                "accessToken": "access",
+                "refreshToken": "refresh",
+                "expiresAt": 32503680000000,
+            }
+        }
+        with (
+            patch.object(claude, "_load_credentials", return_value=valid),
+            patch.object(claude, "_rotate_tokens") as rotate,
+            patch.object(claude, "_call_usage", return_value={"five_hour": {}}),
+        ):
+            claude._fetch_fresh()
+
+        rotate.assert_not_called()
+
+    def test_refreshes_after_rejected_token_and_retries_once(self):
+        credentials = {
+            "claudeAiOauth": {"accessToken": "old", "refreshToken": "refresh"}
+        }
+        unauthorized = urllib.error.HTTPError("url", 401, "Unauthorized", {}, None)
+        rotated = {"accessToken": "new", "refreshToken": "refresh"}
+        with (
+            patch.object(claude, "_load_credentials", return_value=credentials),
+            patch.object(claude, "_rotate_tokens", return_value=(rotated, None)) as rotate,
+            patch.object(
+                claude, "_call_usage", side_effect=[unauthorized, {"five_hour": {}}]
+            ) as call_usage,
+        ):
+            result = claude._fetch_fresh()
+
+        rotate.assert_called_once()
+        self.assertNotIn("error", result)
+        self.assertEqual(call_usage.call_args_list[-1].args, ("new",))
+
+
 if __name__ == "__main__":
     unittest.main()

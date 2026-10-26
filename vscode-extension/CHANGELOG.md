@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+
+- Fix automatic Companion updates on Windows: the updater launched its script detached from any console, so it exited without installing.
+- Refresh an expired Claude token before requesting usage, so a rate-limited expired token no longer leaves the Companion on cached data.
+
 ## 0.1.8
 
 - Format Codex credits and show their estimated USD value for personal plans.

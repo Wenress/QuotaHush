@@ -97,5 +97,22 @@ class ReleaseValidationTests(unittest.TestCase):
             )
 
 
+class LaunchTests(unittest.TestCase):
+    def test_update_script_is_not_launched_without_a_console(self):
+        release = {
+            "version": "0.1.8",
+            "installer_url": "https://github.com/installer.exe",
+            "checksums_url": "https://github.com/SHA256SUMS.txt",
+        }
+        with (
+            patch.object(updater, "_powershell_executable", return_value="powershell.exe"),
+            patch.object(updater.subprocess, "Popen") as popen,
+        ):
+            updater._launch_windows_update(Path("update-windows.ps1"), release)
+
+        flags = popen.call_args.kwargs["creationflags"]
+        self.assertFalse(flags & getattr(updater.subprocess, "DETACHED_PROCESS", 0x8))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -145,8 +145,11 @@ def _launch_windows_update(script: Path, release: dict) -> None:
     powershell = _powershell_executable()
     if not powershell:
         raise RuntimeError("Windows PowerShell was not found")
+    # DETACHED_PROCESS must not be used: powershell.exe without a console exits
+    # 0 before running the script, so no update was ever attempted. A hidden
+    # console in its own process group still outlives the server it replaces.
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(
-        subprocess, "DETACHED_PROCESS", 0
+        subprocess, "CREATE_NEW_PROCESS_GROUP", 0
     )
     subprocess.Popen(
         [
