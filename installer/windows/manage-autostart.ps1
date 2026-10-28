@@ -16,8 +16,19 @@ $PowerShellExecutable = Join-Path $env:SystemRoot `
     "System32\WindowsPowerShell\v1.0\powershell.exe"
 $DataDirectory = Join-Path $env:LOCALAPPDATA "QuotaHush"
 $StopPath = Join-Path $DataDirectory "watchdog.stop"
+$ConhostExecutable = Join-Path $env:SystemRoot "System32\conhost.exe"
 $WatchdogArguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + `
     $WatchdogPath + '" -ExecutablePath "' + $ResolvedExecutable + '"'
+# -WindowStyle Hidden only hides the console after it exists. When Windows
+# Terminal is the default terminal, that leaves an empty window open at logon.
+# conhost --headless starts PowerShell with no window at all.
+if (Test-Path -LiteralPath $ConhostExecutable -PathType Leaf) {
+    $LauncherExecutable = $ConhostExecutable
+    $LauncherArguments = '--headless "' + $PowerShellExecutable + '" ' + $WatchdogArguments
+} else {
+    $LauncherExecutable = $PowerShellExecutable
+    $LauncherArguments = $WatchdogArguments
+}
 
 if ($Remove) {
     New-Item -ItemType Directory -Path $DataDirectory -Force | Out-Null
@@ -42,8 +53,8 @@ if (-not (Test-Path -LiteralPath $PowerShellExecutable -PathType Leaf)) {
 New-Item -ItemType Directory -Path $DataDirectory -Force | Out-Null
 Remove-Item -LiteralPath $StopPath -Force -ErrorAction SilentlyContinue
 
-$Action = New-ScheduledTaskAction -Execute $PowerShellExecutable `
-    -Argument $WatchdogArguments -WorkingDirectory $InstallDirectory
+$Action = New-ScheduledTaskAction -Execute $LauncherExecutable `
+    -Argument $LauncherArguments -WorkingDirectory $InstallDirectory
 $Trigger = New-ScheduledTaskTrigger -AtLogOn
 $Settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
@@ -64,16 +75,16 @@ try {
     # In that case retain automatic startup through the standard user Run key.
     New-Item -Path $RunKey -Force | Out-Null
     New-ItemProperty -Path $RunKey -Name $RunValue -PropertyType String `
-        -Value ('"' + $PowerShellExecutable + '" ' + $WatchdogArguments) -Force | Out-Null
+        -Value ('"' + $LauncherExecutable + '" ' + $LauncherArguments) -Force | Out-Null
     $Shell = New-Object -ComObject WScript.Shell
     $Shortcut = $Shell.CreateShortcut($StartupShortcut)
-    $Shortcut.TargetPath = $PowerShellExecutable
-    $Shortcut.Arguments = $WatchdogArguments
+    $Shortcut.TargetPath = $LauncherExecutable
+    $Shortcut.Arguments = $LauncherArguments
     $Shortcut.WorkingDirectory = $InstallDirectory
     $Shortcut.WindowStyle = 7
     $Shortcut.Description = "QuotaHush local Companion"
     $Shortcut.Save()
 }
 
-Start-Process -FilePath $PowerShellExecutable -ArgumentList $WatchdogArguments `
+Start-Process -FilePath $LauncherExecutable -ArgumentList $LauncherArguments `
     -WorkingDirectory $InstallDirectory -WindowStyle Hidden
